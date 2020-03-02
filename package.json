@@ -1,0 +1,26 @@
+{
+    "name": "0x-api-simbot",
+    "version": "1.0.0",
+    "main": "index.js",
+    "author": "Lawrence Forman <me@merklejerk.com>",
+    "license": "Apache-2.0",
+    "private": true,
+    "scripts": {
+        "clean": "rm -f results.json",
+        "start": "yarn build-contracts && node ./src/index.js --output results.json",
+        "build-contracts": "solc --evm-version istanbul --overwrite -o ./build --pretty-json --abi --bin-runtime ./src/contracts/**.sol"
+    },
+    "devDependencies": {
+        "solc": "^0.6.3"
+    },
+    "dependencies": {
+        "colors": "^1.4.0",
+        "flex-contract": "^2.1.0",
+        "flex-ether": "^1.6.6",
+        "lodash": "^4.17.15",
+        "node-fetch": "^2.6.0",
+        "web3-eth-abi": "^1.2.6",
+        "web3-providers-ipc": "^1.2.6",
+        "yargs": "^15.1.0"
+    }
+}
