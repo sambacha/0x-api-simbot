@@ -11,7 +11,7 @@ sns.set_palette('muted')
 
 def load_data(path):
     with open(path) as f:
-        return [json.loads(line) for line in  f.readlines()]
+        return [json.loads(line) for line in f.readlines()]
 
 DELAYS = [(0, 30), (30, 60), (60, 90), (90, 180), (180, 600)]
 
@@ -36,13 +36,14 @@ REASONS = ['expired', 'filled', 'cancelled', 'invalid', 'frontrun?', 'fillable']
 
 def get_order_fail_reason(swap, order_idx):
     info = swap['metadata']['swapResult']['orderInfos'][order_idx]
-    if info['orderStatus'] == 4:
+    status = info['orderStatus']
+    if status == 4:
         return 'expired'
-    if info['orderStatus'] == 5:
+    if status == 5:
         return 'filled'
-    if info['orderStatus'] == 6:
+    if status == 6:
         return 'cancelled'
-    if info['orderStatus'] != 3:
+    if status != 3:
         return 'invalid'
     if was_frontrun(swap):
         return 'frontrun?'

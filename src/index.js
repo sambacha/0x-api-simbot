@@ -216,7 +216,7 @@ function decodeSwapResult(encodedResult) {
             })),
             orderInfos: r.orderInfos.map(info => ({
                 orderHash: info.orderHash,
-                orderStatus: info.orderStatus,
+                orderStatus: parseInt(info.orderStatus),
                 orderTakerAssetFilledAmount: info.orderTakerAssetFilledAmount,
             })),
         };
