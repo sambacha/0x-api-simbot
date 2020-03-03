@@ -18,12 +18,15 @@ contract MarketCallTaker {
         IExchange exchange;
         HackedExchange hackedExchange;
         bytes data;
+        IExchange.Order[] orders;
     }
 
     struct SwapResult {
         uint256 boughtAmount;
         HackedExchange.FillInfo[] fills;
+        IExchange.OrderInfo[] orderInfos;
         bytes revertData;
+        uint32 blockNumber;
         uint256 gasLeft;
     }
 
@@ -52,6 +55,11 @@ contract MarketCallTaker {
             swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
         }
         swapResult.fills = params.hackedExchange.getFillInfos();
+        swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
+        for (uint256 i = 0; i < params.orders.length; ++i) {
+            swapResult.orderInfos[i] = IExchange(params.exchange).getOrderInfo(params.orders[i]);
+        }
+        swapResult.blockNumber = uint32(block.number);
         swapResult.gasLeft = gasleft();
     }
 

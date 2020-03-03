@@ -28,7 +28,7 @@ sources = ['0x', 'bridge', 'native-mix', 'bridge-mix']
 metadata_by_source = {
     s: [
         d['metadata'] for d in data
-            if len(d['sources']) == 1 and d['sources'][0]['name'] == s
+            if set(s['name'] for s in d['sources']) == set([s])
             or (s == 'bridge' and len(d['sources']) == 1 and d['sources'][0]['name'] != '0x')
             or (s == 'native-mix' and len(d['sources']) > 1 and '0x' in [s['name'] for s in d['sources']])
             or (s == 'bridge-mix' and len(d['sources']) > 1 and '0x' not in [s['name'] for s in d['sources']])
