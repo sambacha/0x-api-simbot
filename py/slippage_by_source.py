@@ -7,42 +7,25 @@ import itertools
 import pandas as pd
 import decimal
 from decimal import Decimal
+from utils import DELAYS, VALUES, load_data, format_value, get_max_value
 
 decimal.setcontext(decimal.Context(prec=64))
 
 sns.set(color_codes=True)
 sns.set_palette('muted')
 
-def load_data(path):
-    with open(path) as f:
-        return [json.loads(line) for line in  f.readlines()]
-
-DELAYS = [(0, 30), (30, 60), (60, 90), (90, 180), (180, 600)]
-VALUES = [(0, 250), (250, 1000), (1000, 5000), (5000, 10000), (10000, 25000)]
-
 def get_program_args():
     args = argparse.ArgumentParser()
     args.add_argument('path', type=str)
+    args.add_argument('--url', type=str)
     return args.parse_args()
 
-def format_value(value):
-    if value >= 1000:
-        return f'${value // 1000}K'
-    return f'${value}'
-
 def get_slippage(swap_data):
-    price = Decimal(swap_data['orders'][0]['makerAssetAmount']) / \
-        Decimal(swap_data['orders'][0]['takerAssetAmount'])
+    price = Decimal(max(o['makerAssetAmount'] /
+        Decimal(o['takerAssetAmount']) for o in swap_data['orders']))
     filled_price = Decimal(swap_data['metadata']['swapResult']['boughtAmount']) / \
         Decimal(swap_data['sellAmount'])
     return (filled_price - price) / price
-
-def get_max_value(swap_data):
-    fill_value = float(swap_data['metadata']['fillValue'])
-    for min_value, max_value in VALUES:
-        if fill_value < max_value:
-            return max_value
-    return float('inf')
 
 def is_valid_swap(swap_data):
     swap_result = swap_data['metadata']['swapResult']
@@ -53,7 +36,7 @@ def is_valid_swap(swap_data):
     return True
 
 args = get_program_args()
-data = [d for d in load_data(args.path) if is_valid_swap(d)]
+data = [d for d in load_data(args.path, args.url) if is_valid_swap(d)]
 print(f'Loaded {len(data)} data items')
 
 sources = sorted(set(itertools.chain(

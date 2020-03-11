@@ -5,29 +5,19 @@ import json
 import argparse
 import itertools
 import pandas as pd
+from utils import VALUES, DELAYS, load_data, format_value
 
 sns.set(color_codes=True)
 sns.set_palette('muted')
 
-def load_data(path):
-    with open(path) as f:
-        return [json.loads(line) for line in  f.readlines()]
-
-DELAYS = [(0, 30), (30, 60), (60, 90), (90, 180), (180, 600)]
-VALUES = [(0, 250), (250, 1000), (1000, 5000), (5000, 10000), (10000, 25000)]
-
 def get_program_args():
     args = argparse.ArgumentParser()
     args.add_argument('path', type=str)
+    args.add_argument('--url', type=str)
     return args.parse_args()
 
-def format_value(value):
-    if value >= 1000:
-        return f'${value // 1000}K'
-    return f'${value}'
-
 args = get_program_args()
-data = load_data(args.path)
+data = load_data(args.path, args.url)
 print(f'Loaded {len(data)} data items')
 
 metadata_by_prices = {

@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import './IERC20.sol';
 import './HackedWallet.sol';
-import './HackedExchange.sol';
+import './IExchange.sol';
 
 contract MarketCallTaker {
 
@@ -16,25 +16,23 @@ contract MarketCallTaker {
         HackedWallet wallet;
         address spender;
         IExchange exchange;
-        HackedExchange hackedExchange;
         bytes data;
         IExchange.Order[] orders;
     }
 
     struct SwapResult {
         uint256 boughtAmount;
-        HackedExchange.FillInfo[] fills;
         IExchange.OrderInfo[] orderInfos;
         bytes revertData;
         uint32 blockNumber;
-        uint256 gasLeft;
+        uint256 gasStart;
+        uint256 gasEnd;
     }
 
     function fill(FillParams calldata params)
         external payable
         returns (SwapResult memory swapResult)
     {
-        params.hackedExchange.__setImplementation(address(params.exchange));
         if (address(params.takerToken) != WETH) {
             params.wallet.pullTokens(address(params.takerToken));
             (bool success, bytes memory result) =
@@ -47,20 +45,20 @@ contract MarketCallTaker {
                 assembly { revert(add(result, 32), mload(result)) }
             }
         }
+        swapResult.gasStart = gasleft();
         (bool success, bytes memory callResult) =
             params.to.call.value(msg.value)(params.data);
+        swapResult.gasEnd = gasleft();
         if (!success) {
             swapResult.revertData = callResult;
         } else {
             swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
         }
-        swapResult.fills = params.hackedExchange.getFillInfos();
         swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
         for (uint256 i = 0; i < params.orders.length; ++i) {
             swapResult.orderInfos[i] = IExchange(params.exchange).getOrderInfo(params.orders[i]);
         }
         swapResult.blockNumber = uint32(block.number);
-        swapResult.gasLeft = gasleft();
     }
 
     receive() payable external {}

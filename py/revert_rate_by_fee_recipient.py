@@ -5,23 +5,19 @@ import json
 import argparse
 import itertools
 import pandas as pd
+from utils import DELAYS, load_data
 
 sns.set(color_codes=True)
 sns.set_palette('muted')
 
-def load_data(path):
-    with open(path) as f:
-        return [json.loads(line) for line in  f.readlines()]
-
-DELAYS = [(0, 30), (30, 60), (60, 90), (90, 180), (180, 600)]
-
 def get_program_args():
     args = argparse.ArgumentParser()
     args.add_argument('path', type=str)
+    args.add_argument('--url', type=str)
     return args.parse_args()
 
 args = get_program_args()
-data = load_data(args.path)
+data = load_data(args.path, args.url)
 print(f'Loaded {len(data)} data items')
 
 fee_recipients = sorted(set(

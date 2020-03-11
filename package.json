@@ -6,8 +6,8 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "clean": "rm -f results.json",
         "start": "yarn build-contracts && node ./src/index.js",
+        "start-ab": "yarn build-contracts && node ./src/a-b.js",
         "build-contracts": "solc --evm-version istanbul --overwrite -o ./build --pretty-json --abi --bin-runtime ./src/contracts/**.sol"
     },
     "devDependencies": {
