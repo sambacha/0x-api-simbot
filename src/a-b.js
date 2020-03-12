@@ -30,13 +30,15 @@ const ARGV = yargs
 async function fillSellQuotes(urls, logs) {
     const [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
     const id = randomHash();
+    const swapValue = getRandomBracketValue(FILL_STOPS);
+    const fillDelay = getRandomBracketValue(DELAY_STOPS);
     const results = await Promise.all(urls.map(
         apiPath => fillSellQuote({
             makerToken,
             takerToken,
             apiPath,
-            swapValue: getRandomBracketValue(FILL_STOPS),
-            fillDelay: getRandomBracketValue(DELAY_STOPS),
+            swapValue,
+            fillDelay,
         }),
     ));
     await Promise.all(

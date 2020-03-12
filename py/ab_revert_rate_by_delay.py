@@ -30,7 +30,6 @@ for d in data:
         if not is_successful_swap(swap):
             counts_by_delay_by_url[delay][url]['reverts'] += 1
         counts_by_delay_by_url[delay][url]['total'] += 1
-
 urls = sorted(list(list(counts_by_delay_by_url.values())[0].keys()))
 
 sns.catplot(
