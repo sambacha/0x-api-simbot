@@ -7,7 +7,7 @@ import itertools
 import pandas as pd
 import decimal
 from decimal import Decimal
-from utils import DELAYS, VALUES, load_data, format_value, get_max_value
+from utils import VALUES, load_data, format_value, get_max_value, is_successful_swap
 
 decimal.setcontext(decimal.Context(prec=64))
 
@@ -21,22 +21,15 @@ def get_program_args():
     return args.parse_args()
 
 def get_slippage(swap_data):
-    price = Decimal(max(o['makerAssetAmount'] /
-        Decimal(o['takerAssetAmount']) for o in swap_data['orders']))
+    price = max(
+        Decimal(o['makerAssetAmount']) / Decimal(o['takerAssetAmount']) for o in swap_data['orders']
+    )
     filled_price = Decimal(swap_data['metadata']['swapResult']['boughtAmount']) / \
-        Decimal(swap_data['sellAmount'])
+        Decimal(swap_data['metadata']['swapResult']['soldAmount'])
     return (filled_price - price) / price
 
-def is_valid_swap(swap_data):
-    swap_result = swap_data['metadata']['swapResult']
-    if swap_result['revertData'] != '0x':
-        return False
-    if swap_result['boughtAmount'] == '0':
-        return False
-    return True
-
 args = get_program_args()
-data = [d for d in load_data(args.path, args.url) if is_valid_swap(d)]
+data = [d for d in load_data(args.path, args.url) if is_successful_swap(d)]
 print(f'Loaded {len(data)} data items')
 
 tokens = sorted(set([ *(d['metadata']['makerToken'] for d in data), *(d['metadata']['takerToken'] for d in data) ]))
@@ -59,7 +52,7 @@ sns.catplot(
         columns=['token', 'swap value', 'slippage'],
     ),
     kind='bar',
-    errcolor='gray',
+    errcolor='black',
     errwidth=1,
     capsize=.1,
     order=tokens,
@@ -78,5 +71,6 @@ plt.xticks(plt.xticks()[0], ['%s (%d)' % (t, counts_by_token[t]) for t in tokens
 
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%.1f%%' % (y * 100)))
 plt.title(f'Slippage by token and swap value ({len(data)} swaps)')
+plt.ylabel('slippage (+ is good)')
 plt.subplots_adjust(top=0.9, right=0.95, left=0.05)
 plt.show()

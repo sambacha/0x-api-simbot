@@ -22,6 +22,7 @@ contract MarketCallTaker {
 
     struct SwapResult {
         uint256 boughtAmount;
+        uint256 soldAmount;
         IExchange.OrderInfo[] orderInfos;
         bytes revertData;
         uint32 blockNumber;
@@ -33,6 +34,7 @@ contract MarketCallTaker {
         external payable
         returns (SwapResult memory swapResult)
     {
+        uint256 takerBalanceBefore = 0;
         if (address(params.takerToken) != WETH) {
             params.wallet.pullTokens(address(params.takerToken));
             (bool success, bytes memory result) =
@@ -44,6 +46,13 @@ contract MarketCallTaker {
             if (!success) {
                 assembly { revert(add(result, 32), mload(result)) }
             }
+            takerBalanceBefore = params.takerToken.balanceOf(address(this));
+        } else {
+            takerBalanceBefore = address(this).balance;
+        }
+        swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
+        for (uint256 i = 0; i < params.orders.length; ++i) {
+            swapResult.orderInfos[i] = IExchange(params.exchange).getOrderInfo(params.orders[i]);
         }
         swapResult.gasStart = gasleft();
         (bool success, bytes memory callResult) =
@@ -54,9 +63,10 @@ contract MarketCallTaker {
         } else {
             swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
         }
-        swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
-        for (uint256 i = 0; i < params.orders.length; ++i) {
-            swapResult.orderInfos[i] = IExchange(params.exchange).getOrderInfo(params.orders[i]);
+        if (address(params.takerToken) != WETH) {
+            swapResult.soldAmount = takerBalanceBefore - params.takerToken.balanceOf(address(this));
+        } else {
+            swapResult.soldAmount = takerBalanceBefore - address(this).balance;
         }
         swapResult.blockNumber = uint32(block.number);
     }

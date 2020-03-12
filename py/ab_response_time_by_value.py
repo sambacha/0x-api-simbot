@@ -47,7 +47,7 @@ sns.catplot(
 
 for t, url in zip(plt.gca().get_legend().texts, urls):
     t.set_text(url)
-plt.xticks(list(range(len(VALUES))), [f'< {format_value(max_value)}' % max_value for min_value, max_value in VALUES])
+plt.xticks(list(range(len(VALUES))), [f'< {format_value(max_value)}' for min_value, max_value in VALUES])
 
 plt.title(f'A-B response time by swap value ({len(data)} swaps)')
 plt.subplots_adjust(top=0.9, right=0.95, left=0.05)

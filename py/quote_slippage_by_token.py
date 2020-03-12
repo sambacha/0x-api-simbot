@@ -20,62 +20,59 @@ def get_program_args():
     args.add_argument('--url', type=str)
     return args.parse_args()
 
-def get_slippage(swap_data):
-    price = max(
-        Decimal(o['makerAssetAmount']) / Decimal(o['takerAssetAmount']) for o in swap_data['orders']
-    )
-    filled_price = Decimal(swap_data['metadata']['swapResult']['boughtAmount']) / \
-        Decimal(swap_data['metadata']['swapResult']['soldAmount'])
-    return (filled_price - price) / price
+def get_slippage(swap):
+    price = Decimal(swap['buyAmount']) / Decimal(swap['sellAmount'])
+    filled_price = Decimal(swap['metadata']['swapResult']['boughtAmount']) / \
+        Decimal(swap['metadata']['swapResult']['soldAmount'])
+    slippage = (filled_price - price) / price
+    if slippage < Decimal(-0.04):
+        print(slippage)
+        print(json.dumps(swap))
+    return slippage
 
 args = get_program_args()
 data = [d for d in load_data(args.path, args.url) if is_successful_swap(d)]
 print(f'Loaded {len(data)} data items')
 
-sources = sorted(set(itertools.chain(
-    *[i for i in [
-        [s['name'] for s in d['sources'] if s['name'] != '0x']
-        for d in data
-    ]],
-)))
-print(f'Found {len(sources)} sources')
-
-data_by_source = {
-    s: [
-        d for d in data
-            if len(d['sources']) == 1 and d['sources'][0]['name'] == s
-    ] for s in sources
-}
-
-df_values = []
-for s in sources:
-    for d in data_by_source[s]:
-        df_values.append([s, get_max_value(d), float(get_slippage(d))])
-
 tokens = sorted(set([ *(d['metadata']['makerToken'] for d in data), *(d['metadata']['takerToken'] for d in data) ]))
 sns.catplot(
-    x='source',
+    x='token',
     y='slippage',
     hue='swap value',
-    data=pd.DataFrame(
-        df_values,
-        columns=['source', 'swap value', 'slippage'],
+    data=pd.DataFrame([
+            *([
+                d['metadata']['takerToken'],
+                get_max_value(d),
+                float(get_slippage(d)),
+            ] for d in data),
+            *([
+                d['metadata']['makerToken'],
+                get_max_value(d),
+                float(get_slippage(d)),
+            ] for d in data)
+        ],
+        columns=['token', 'swap value', 'slippage'],
     ),
     kind='bar',
     errcolor='black',
     errwidth=1,
     capsize=.1,
-    order=sources,
+    order=tokens,
     legend=True,
     legend_out=False,
 )
 
 for t, (min_value, max_value) in zip(plt.gca().get_legend().texts, VALUES):
     t.set_text(f'< {format_value(max_value)}')
-plt.xticks(plt.xticks()[0], ['%s (%d)' % (s, len(data_by_source[s])) for s in sources])
+
+counts_by_token = {
+    t: sum(1 for d in data if d['metadata']['makerToken'] == t or d['metadata']['takerToken'] == t)
+        for t in tokens
+}
+plt.xticks(plt.xticks()[0], ['%s (%d)' % (t, counts_by_token[t]) for t in tokens])
 
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%.1f%%' % (y * 100)))
-plt.title(f'Slippage by source and swap value ({len(data)} swaps)')
+plt.title(f'Quote slippage by token and swap value ({len(data)} swaps)')
 plt.ylabel('slippage (+ is good)')
 plt.subplots_adjust(top=0.9, right=0.95, left=0.05)
 plt.show()

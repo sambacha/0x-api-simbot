@@ -131,6 +131,7 @@ function decodeSwapResult(encodedResult) {
             blockNumber: parseInt(r.blockNumber),
             revertData: r.revertData,
             boughtAmount: r.boughtAmount,
+            soldAmount: r.soldAmount,
             orderInfos: r.orderInfos.map(info => ({
                 orderHash: info.orderHash,
                 orderStatus: parseInt(info.orderStatus),
