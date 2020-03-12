@@ -32,7 +32,7 @@ for d in data:
                 counts_by_source_by_url[source][url]['reverts'] += 1
             counts_by_source_by_url[source][url]['total'] += 1
 urls = sorted(list(list(counts_by_source_by_url.values())[0].keys()))
-sources = sorted(list(counts_by_source_by_url.keys()))
+sources = sorted(list(s for s in counts_by_source_by_url.keys() if set(counts_by_source_by_url[s].keys()) == set(urls)))
 
 sns.catplot(
     x='source',
