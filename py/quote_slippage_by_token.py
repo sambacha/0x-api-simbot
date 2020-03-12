@@ -25,9 +25,6 @@ def get_slippage(swap):
     filled_price = Decimal(swap['metadata']['swapResult']['boughtAmount']) / \
         Decimal(swap['metadata']['swapResult']['soldAmount'])
     slippage = (filled_price - price) / price
-    if slippage < Decimal(-0.04):
-        print(slippage)
-        print(json.dumps(swap))
     return slippage
 
 args = get_program_args()
