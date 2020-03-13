@@ -6,7 +6,7 @@ import argparse
 import itertools
 import pandas as pd
 from ab_utils import load_ab_data
-from utils import DELAYS, get_min_delay, is_successful_swap
+from utils import get_min_delay, is_successful_swap
 
 sns.set(color_codes=True)
 sns.set_palette('muted')
@@ -31,6 +31,7 @@ for d in data:
             counts_by_delay_by_url[delay][url]['reverts'] += 1
         counts_by_delay_by_url[delay][url]['total'] += 1
 urls = sorted(list(list(counts_by_delay_by_url.values())[0].keys()))
+delays = sorted(list(counts_by_delay_by_url.keys()))
 
 sns.catplot(
     x='delay',
@@ -41,7 +42,7 @@ sns.catplot(
                 url,
                 min_delay,
                 counts_by_delay_by_url[min_delay][url]['reverts'] / counts_by_delay_by_url[min_delay][url]['total'],
-            ] for url, (min_delay, max_delay) in itertools.product(urls, DELAYS)
+            ] for url, min_delay in itertools.product(urls, delays)
         ],
         columns=['url', 'delay', 'revert rate'],
     ),
@@ -55,8 +56,8 @@ counts_by_delay = {
         for delay in counts_by_delay_by_url.keys()
 }
 plt.xticks(
-    list(range(len(DELAYS))),
-    [f'{min_delay}s ({counts_by_delay[min_delay]})' for (min_delay, max_delay) in DELAYS],
+    list(range(len(delays))),
+    [f'{min_delay}s ({counts_by_delay[min_delay]})' for min_delay in delays],
 )
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: f'{int(y * 100)}%'))
 plt.title(f'A-B revert rate by delay ({len(data)} swaps)')

@@ -8,7 +8,6 @@ import './IExchange.sol';
 contract MarketCallTaker {
 
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address private constant STAKING_PROXY = 0xa26e80e7Dea86279c6d778D702Cc413E6CFfA777;
 
     struct FillParams {
         address payable to;
@@ -49,7 +48,6 @@ contract MarketCallTaker {
             }
             takerBalanceBefore = params.takerToken.balanceOf(address(this));
         } else {
-            IERC20(WETH).approve(STAKING_PROXY, uint256(-1));
             takerBalanceBefore = address(this).balance;
         }
         swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);

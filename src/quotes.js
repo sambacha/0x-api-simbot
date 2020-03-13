@@ -79,6 +79,7 @@ async function fillQuote(quote) {
                 {
                     to: takerContractAddress,
                     gas: toHex(8e6),
+                    from: TOKENS['ETH'].wallet,
                     gasPrice: toHex(quote.gasPrice),
                     value: toHex(quote.value),
                     data: await takerContract.fill({
@@ -99,10 +100,6 @@ async function fillQuote(quote) {
                 },
             ],
         ));
-        if (new BigNumber(result.boughtAmount).div(quote.buyAmount).abs().gte(2)) {
-            console.log(result);
-            throw new Error('bizarre result?');
-        }
         let success = result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gte(0);
         if (success) {
