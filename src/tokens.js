@@ -16,7 +16,7 @@ const TOKENS = {
     'USDC': {
         decimals: 6,
         address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-        wallet: '0x0a3c8780cb5836a96288b9ab50a472276f4e5726',
+        wallet: '0x0434deed9e80e047579f6f384cc3834351c2b555',
         value: 1,
     },
     'MKR': {
