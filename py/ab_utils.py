@@ -27,12 +27,10 @@ def rewrite_urls(swaps):
     return swaps
 
 def find_common_prefix(urls):
-    shortest_url = urls[0]
-    for url in urls[1:]:
-        if len(shortest_url) > len(url):
-            shortest_url = url
-    for i in reversed(range(len(shortest_url))):
-        prefix = shortest_url[:i]
+    shortest_url = min(urls, key=lambda u: len(u))
+    parts = shortest_url.split('/')
+    for i in reversed(range(len(parts))):
+        prefix = '/'.join(parts[:i])
         if all(u.startswith(prefix) for u in urls):
             return prefix
     return ''
