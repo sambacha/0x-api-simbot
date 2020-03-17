@@ -68,7 +68,7 @@ counts_by_token = {
 }
 plt.xticks(plt.xticks()[0], ['%s (%d)' % (t, counts_by_token[t]) for t in tokens])
 
-plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%.1f%%' % (y * 100)))
+plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%.2f%%' % (y * 100)))
 plt.title(f'Quote slippage by token and swap value ({len(data)} swaps)')
 plt.ylabel('slippage (+ is good)')
 plt.subplots_adjust(top=0.9, right=0.95, left=0.05)
