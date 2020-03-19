@@ -44,10 +44,10 @@ sns.catplot(
                     if not is_successful_swap(s)
                     and s['metadata']['fillDelay'] >= min_delay
                     and s['metadata']['fillDelay'] < max_delay
-                ) / sum(1 for s in swap_by_pair[pair]
+                ) / max(1, sum(1 for s in swap_by_pair[pair]
                     if s['metadata']['fillDelay'] >= min_delay
                     and s['metadata']['fillDelay'] < max_delay
-                ),
+                )),
             ] for pair, (min_delay, max_delay) in itertools.product(pairs, DELAYS)
         ],
         columns=['pair', 'delay', 'revert rate'],

@@ -40,10 +40,10 @@ sns.catplot(
                     if m['swapResult']['revertData'] != '0x'
                     and m['fillDelay'] >= min_delay
                     and m['fillDelay'] < max_delay
-                ) / sum(1 for m in metadata_by_prices[max_value]
+                ) / max(1, sum(1 for m in metadata_by_prices[max_value]
                     if m['fillDelay'] >= min_delay
                     and m['fillDelay'] < max_delay
-                ),
+                )),
             ] for (min_value, max_value), (min_delay, max_delay)
                 in itertools.product(VALUES, DELAYS)
         ],

@@ -10,9 +10,6 @@
         "start-ab": "yarn build-contracts && node ./src/a-b.js",
         "build-contracts": "solc --evm-version istanbul --overwrite -o ./build --pretty-json --abi --bin-runtime ./src/contracts/**.sol"
     },
-    "devDependencies": {
-        "solc": "^0.6.3"
-    },
     "dependencies": {
         "colors": "^1.4.0",
         "flex-contract": "^2.1.1",
