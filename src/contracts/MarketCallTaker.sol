@@ -56,7 +56,7 @@ contract MarketCallTaker {
         }
         swapResult.gasStart = gasleft();
         (bool success, bytes memory callResult) =
-            params.to.call.value(address(this).balance)(params.data);
+            params.to.call{value: address(this).balance}(params.data);
         swapResult.gasEnd = gasleft();
         if (!success) {
             swapResult.revertData = callResult;
