@@ -46,6 +46,7 @@ async function fillSellQuote(opts) {
             id,
             makerToken,
             takerToken,
+            apiPath,
             side: 'sell',
             fillAmount: takerTokenAmount.toString(10),
             fillValue: swapValue,
@@ -64,13 +65,6 @@ async function fillSellQuote(opts) {
 
 async function fillQuote(quote) {
     const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
-    const fillSize = side === 'sell'
-        ? new BigNumber(fillAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2)
-        : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
-    console.log(
-        `* Filling ${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side} after ${fillDelay.toFixed(1)}s...`,
-    );
-    console.log('Composition:', quote.sources.map(s => `${s.name}: ${s.proportion * 100}%`).join(', '));
     const takerContractAddress = randomAddress();
     try {
         const result = decodeSwapResult(await eth.rpc._send(
@@ -102,11 +96,7 @@ async function fillQuote(quote) {
         ));
         let success = result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gte(0);
-        if (success) {
-            console.log(`\t${'✔'.green} PASS`.bold);
-        } else {
-            console.log(`\t${'✘'.red} FAIL`.bold, `(${result.revertData})`);
-        }
+        printFillSummary(quote, success, result.revertData);
         return {
             ...quote,
             metadata: {
@@ -116,6 +106,41 @@ async function fillQuote(quote) {
         };
     } catch (err) {
         console.error(err);
+    }
+}
+
+function printFillSummary(quote, success, revertData) {
+    const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
+    const fillSize = side === 'sell'
+        ? new BigNumber(fillAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2)
+        : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
+    const summary = `${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side} after ${fillDelay.toFixed(1)}s`;
+    let composition = quote.sources
+        .filter(s => s.proportion !== '0')
+        .map(s => `${s.name}: ${s.proportion * 100}%`)
+        .join(', ');
+    if (doesQuoteHaveFallback(quote)) {
+        composition = `${composition} (+ fallback)`;
+    }
+    if (success) {
+        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold}\n\t${composition}`);
+    } else {
+        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${revertData})\n\t${composition}`);
+    }
+}
+
+function doesQuoteHaveFallback(quote) {
+    const nativeOrders = quote.orders.filter(o => /^0xf47261b0/.test(o.makerAssetData));
+    if (nativeOrders.length == 0) {
+        return false;
+    }
+    const bridgeOrders = quote.orders.filter(o => !/^0xf47261b0/.test(o.makerAssetData));
+    if (quote.metadata.side === 'sell') {
+        const totalBridgesTakerAssetAmount = BigNumber.sum(...bridgeOrders.map(o => o.takerAssetAmount));
+        return totalBridgesTakerAssetAmount.gte(quote.sellAmount);
+    } else {
+        const totalBridgesMakerAssetAmount = BigNumber.sum(...bridgeOrders.map(o => o.makerAssetAmount));
+        return totalBridgesMakerAssetAmount.gte(quote.buyAmount);
     }
 }
 

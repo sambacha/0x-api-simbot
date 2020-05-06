@@ -42,7 +42,7 @@ async function fillSellQuotes(urls, logs) {
         }),
     ));
     await Promise.all(
-        results.map((r, i) => logs.writeObject(
+        results.filter(r => !!r).map((r, i) => logs.writeObject(
             { ...r, metadata: { ...r.metadata, id, apiURL: urls[i] } },
         )),
     );
