@@ -28,7 +28,10 @@ const ARGV = yargs
 })();
 
 async function _fillSellQuote(logs) {
-    const [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+    let [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+    if (makerToken === 'ETH') {
+        makerToken = 'WETH';
+    }
     const result = await fillSellQuote({
         makerToken,
         takerToken,

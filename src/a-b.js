@@ -28,7 +28,10 @@ const ARGV = yargs
 })();
 
 async function fillSellQuotes(urls, logs) {
-    const [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+    let [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+    if (makerToken === 'ETH') {
+        makerToken = 'WETH';
+    }
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
