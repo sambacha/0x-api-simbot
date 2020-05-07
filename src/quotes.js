@@ -42,6 +42,8 @@ async function fillSellQuote(opts) {
     const quoteResult = await resp.json();
     const quote = {
         ...quoteResult,
+        // Filter out unused sources.
+        sources: quoteResult.sources.filter(s => s.proportion !== '0'),
         metadata: {
             id,
             makerToken,
@@ -116,7 +118,6 @@ function printFillSummary(quote, success, revertData) {
         : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
     const summary = `${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side} after ${fillDelay.toFixed(1)}s`;
     let composition = quote.sources
-        .filter(s => s.proportion !== '0')
         .map(s => `${s.name}: ${s.proportion * 100}%`)
         .join(', ');
     if (doesQuoteHaveFallback(quote)) {
