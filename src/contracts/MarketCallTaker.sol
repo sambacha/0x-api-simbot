@@ -4,16 +4,20 @@ pragma experimental ABIEncoderV2;
 import './IERC20.sol';
 import './HackedWallet.sol';
 import './IExchange.sol';
+import './LibERC20Token.sol';
+import './IWETH.sol';
 
 contract MarketCallTaker {
 
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    IWETH private WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     struct FillParams {
         address payable to;
         IERC20 makerToken;
         IERC20 takerToken;
         HackedWallet wallet;
+        uint256 protocolFeeAmount;
         address spender;
         IExchange exchange;
         bytes data;
@@ -30,45 +34,59 @@ contract MarketCallTaker {
         uint256 gasEnd;
     }
 
+    using LibERC20Token for IERC20;
+
     function fill(FillParams calldata params)
-        external payable
+        external
+        payable
         returns (SwapResult memory swapResult)
     {
+        require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
+
+        swapResult.blockNumber = uint32(block.number);
+
         uint256 takerBalanceBefore = 0;
-        if (address(params.takerToken) != WETH) {
-            params.wallet.pullTokens(address(params.takerToken));
-            (bool success, bytes memory result) =
-                address(params.takerToken).call(abi.encodeWithSelector(
-                    IERC20.approve.selector,
-                    params.spender,
-                    uint256(-1)
-                ));
-            if (!success) {
-                assembly { revert(add(result, 32), mload(result)) }
-            }
-            takerBalanceBefore = params.takerToken.balanceOf(address(this));
+        if (params.takerToken == ETH) {
+            takerBalanceBefore = msg.value - params.protocolFeeAmount;
         } else {
-            takerBalanceBefore = address(this).balance;
+            params.wallet.pullTokens(params.takerToken);
+            takerBalanceBefore = params.takerToken.balanceOf(address(this));
+            params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
+
+
         swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
         for (uint256 i = 0; i < params.orders.length; ++i) {
-            swapResult.orderInfos[i] = IExchange(params.exchange).getOrderInfo(params.orders[i]);
+            swapResult.orderInfos[i] = IExchange(params.exchange)
+                .getOrderInfo(params.orders[i]);
         }
+
         swapResult.gasStart = gasleft();
         (bool success, bytes memory callResult) =
-            params.to.call{value: address(this).balance}(params.data);
+            params.to.call{value: msg.value}(params.data);
         swapResult.gasEnd = gasleft();
+
         if (!success) {
             swapResult.revertData = callResult;
         } else {
-            swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
+            if (params.makerToken == ETH) {
+                swapResult.boughtAmount = address(this).balance;
+                swapResult.boughtAmount =
+                    swapResult.boughtAmount <= params.protocolFeeAmount
+                    ? 0 : swapResult.boughtAmount - params.protocolFeeAmount;
+            } else {
+                swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
+            }
+            if (params.takerToken == ETH) {
+                swapResult.soldAmount = takerBalanceBefore - address(this).balance;
+                swapResult.soldAmount =
+                    swapResult.soldAmount <= params.protocolFeeAmount
+                    ? 0 : swapResult.soldAmount - params.protocolFeeAmount;
+            } else {
+                swapResult.soldAmount = takerBalanceBefore -
+                    params.takerToken.balanceOf(address(this));
+            }
         }
-        if (address(params.takerToken) != WETH) {
-            swapResult.soldAmount = takerBalanceBefore - params.takerToken.balanceOf(address(this));
-        } else {
-            swapResult.soldAmount = takerBalanceBefore - address(this).balance;
-        }
-        swapResult.blockNumber = uint32(block.number);
     }
 
     receive() payable external {}

@@ -83,10 +83,11 @@ async function fillQuote(quote) {
                         makerToken: TOKENS[makerToken].address,
                         takerToken: TOKENS[takerToken].address,
                         wallet: TOKENS[takerToken].wallet,
-                        spender: ERC20_PROXY,
+                        spender: quote.spender || ERC20_PROXY,
                         exchange: EXCHANGE,
                         data: quote.data,
                         orders: quote.orders,
+                        protocolFeeAmount: quote.protocolFee.toString(10),
                     }).encode(),
                 },
                 'latest',
@@ -107,7 +108,7 @@ async function fillQuote(quote) {
             },
         };
     } catch (err) {
-        console.error(err);
+        console.error(`${takerToken} -> ${makerToken}`, err);
     }
 }
 

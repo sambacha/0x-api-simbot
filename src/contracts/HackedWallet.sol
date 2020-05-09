@@ -1,18 +1,14 @@
 pragma solidity ^0.6;
 
 import './IERC20.sol';
+import './LibERC20Token.sol';
 
 contract HackedWallet {
 
-    function pullTokens(address token) external {
-        (bool success, bytes memory result) = token.call(abi.encodeWithSelector(
-            IERC20.transfer.selector,
-            msg.sender,
-            IERC20(token).balanceOf(address(this))
-        ));
-        if (!success) {
-            assembly { revert(add(result, 32), mload(result)) }
-        }
+    using LibERC20Token for IERC20;
+
+    function pullTokens(IERC20 token) external {
+        token.compatTransfer(msg.sender, token.balanceOf(address(this)));
     }
 
     function pullEther() external {
