@@ -12,9 +12,9 @@ const _ = require('lodash');
 
 const { delay, randomAddress, toHex, toTokenAmount } = require('./utils');
 const TOKENS = require('./tokens');
+const { TAKER_ADDRESS } = require('./pseudo-addresses');
 
 const ERC20_PROXY = '0x95e6f48254609a6ee006f7d493c8e5fb97094cef';
-const EXCHANGE = '0x61935cbdd02287b511119ddb11aeb42f1593b7ef';
 const BUILD_ROOT = path.resolve(__dirname, '../build');
 const ABIS = {
     MarketCallTaker: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.abi`)),
@@ -28,8 +28,8 @@ const BYTECODES = {
 const eth = new FlexEther({ providerURI: process.env.NODE_RPC });
 const takerContract = new FlexContract(ABIS.MarketCallTaker, { eth });
 
-async function fillSellQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+async function fetchSellQuote(opts) {
+    const { makerToken, takerToken, swapValue, apiPath, id } = opts;
     const quoteTime = Date.now();
     const takerTokenAmount =
         toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
@@ -40,7 +40,7 @@ async function fillSellQuote(opts) {
     ].join('&');
     const resp = await fetch(`${apiPath}?${qs}`);
     const quoteResult = await resp.json();
-    const quote = {
+    return {
         ...quoteResult,
         // Filter out unused sources.
         sources: quoteResult.sources.filter(s => s.proportion !== '0'),
@@ -54,9 +54,12 @@ async function fillSellQuote(opts) {
             fillValue: swapValue,
             timestamp: Math.floor(quoteTime / 1000),
             responseTime: (Date.now() - quoteTime) / 1000,
-            fillDelay: fillDelay,
         }
     };
+}
+
+async function fillSellQuote(opts) {
+    const quote = await fetchSellQuote(opts);
     if (quote.data) {
         return delay(
             async () => fillQuote(quote),
@@ -66,15 +69,14 @@ async function fillSellQuote(opts) {
 }
 
 async function fillQuote(quote) {
-    const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
-    const takerContractAddress = randomAddress();
+    const { side, makerToken, takerToken, fillAmount, fillValue } = quote.metadata;
     try {
         const result = decodeSwapResult(await eth.rpc._send(
             'eth_call',
             [
                 {
-                    to: takerContractAddress,
-                    gas: toHex(8e6),
+                    to: TAKER_ADDRESS,
+                    gas: toHex(100e6),
                     from: TOKENS['ETH'].wallet,
                     gasPrice: toHex(quote.gasPrice),
                     value: toHex(quote.value),
@@ -84,7 +86,6 @@ async function fillQuote(quote) {
                         takerToken: TOKENS[takerToken].address,
                         wallet: TOKENS[takerToken].wallet,
                         spender: quote.spender || ERC20_PROXY,
-                        exchange: EXCHANGE,
                         data: quote.data,
                         orders: quote.orders,
                         protocolFeeAmount: quote.protocolFee.toString(10),
@@ -92,14 +93,14 @@ async function fillQuote(quote) {
                 },
                 'latest',
                 {
-                    [takerContractAddress]: { code: BYTECODES.MarketCallTaker },
+                    [TAKER_ADDRESS]: { code: BYTECODES.MarketCallTaker },
                     [TOKENS[takerToken].wallet]: { code: BYTECODES.HackedWallet },
                 },
             ],
         ));
         let success = result.revertData === '0x' &&
-            new BigNumber(result.boughtAmount).gte(0);
-        printFillSummary(quote, success, result.revertData);
+            new BigNumber(result.boughtAmount).gt(0);
+        printFillSummary(quote, success, result);
         return {
             ...quote,
             metadata: {
@@ -112,12 +113,12 @@ async function fillQuote(quote) {
     }
 }
 
-function printFillSummary(quote, success, revertData) {
-    const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
+function printFillSummary(quote, success, result) {
+    const { side, makerToken, takerToken, fillAmount, fillValue } = quote.metadata;
     const fillSize = side === 'sell'
         ? new BigNumber(fillAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2)
         : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
-    const summary = `${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side} after ${fillDelay.toFixed(1)}s`;
+    const summary = `${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side}`;
     let composition = quote.sources
         .map(s => `${s.name}: ${s.proportion * 100}%`)
         .join(', ');
@@ -125,9 +126,18 @@ function printFillSummary(quote, success, revertData) {
         composition = `${composition} (+ fallback)`;
     }
     if (success) {
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold}\n\t${composition}`);
+        const boughtRatio = new BigNumber(result.boughtAmount).div(quote.buyAmount);
+        console.log(
+            `${summary} @ ${quote.metadata.apiPath}` +
+            `\n\t${'✔ PASS'.green.bold}\n\t${composition}` +
+            `\n\t# orders: ${quote.orders.length}, gas: ${result.gasUsed}, boughtRatio: ${boughtRatio}`,
+        );
     } else {
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${revertData})\n\t${composition}`);
+        console.log(`${summary} @ ${quote.metadata.apiPath}` +
+            `\n\t${'✘ FAIL'.red.bold} (${result.revertData})` +
+            `\n\t${composition}` +
+            `\n\t# orders: ${quote.orders.length}, gas: ${result.gasUsed}`,
+        );
     }
 }
 
@@ -169,5 +179,7 @@ function decodeSwapResult(encodedResult) {
 }
 
 module.exports = {
+    fetchSellQuote,
     fillSellQuote,
+    fillQuote,
 };

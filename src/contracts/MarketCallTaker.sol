@@ -6,11 +6,21 @@ import './HackedWallet.sol';
 import './IExchange.sol';
 import './LibERC20Token.sol';
 import './IWETH.sol';
+import './FullMigration.flat.sol';
+import './Transformers.flat.sol';
+
+interface IZeroEx {
+    function getAllowanceTarget() external view returns (address);
+    function createFreePuppet()
+        external
+        returns (address puppet);
+}
 
 contract MarketCallTaker {
 
-    IWETH private WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    IExchange private constant EXCHANGE = IExchange(0x61935CbDd02287B511119DDb11Aeb42F1593b7Ef);
 
     struct FillParams {
         address payable to;
@@ -19,7 +29,6 @@ contract MarketCallTaker {
         HackedWallet wallet;
         uint256 protocolFeeAmount;
         address spender;
-        IExchange exchange;
         bytes data;
         IExchange.Order[] orders;
     }
@@ -36,11 +45,15 @@ contract MarketCallTaker {
 
     using LibERC20Token for IERC20;
 
-    function fill(FillParams calldata params)
-        external
+    function fill(FillParams memory params)
+        public
         payable
         returns (SwapResult memory swapResult)
     {
+        if (params.spender == address(1)) {
+            params.spender = _deployZeroEx().getAllowanceTarget();
+        }
+
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
 
         swapResult.blockNumber = uint32(block.number);
@@ -54,10 +67,9 @@ contract MarketCallTaker {
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
 
-
         swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
         for (uint256 i = 0; i < params.orders.length; ++i) {
-            swapResult.orderInfos[i] = IExchange(params.exchange)
+            swapResult.orderInfos[i] = EXCHANGE
                 .getOrderInfo(params.orders[i]);
         }
 
@@ -110,4 +122,23 @@ contract MarketCallTaker {
         bytes calldata data,
         bytes calldata operatorData
     ) external {}
+
+    function _deployZeroEx() private returns (IZeroEx) {
+        FullMigration migration = new FullMigration(
+            address(this),
+            FullMigration.Features(
+                new SimpleFunctionRegistry(),
+                new Ownable(),
+                new TokenSpender(),
+                new PuppetPool(),
+                new TransformERC20()
+            )
+        );
+        new WethTransformer(IEtherTokenV06(address(WETH)));
+        new PayTakerTransformer();
+        new FillQuoteTransformer(EXCHANGE);
+        IZeroEx zrx = IZeroEx(address(migration.deploy(address(this))));
+        zrx.createFreePuppet();
+        return zrx;
+    }
 }

@@ -46,6 +46,25 @@ interface IExchange {
         uint256 protocolFeePaid;
     }
 
+    function fillOrder(
+        Order calldata order,
+        uint256 takerAssetFillAmount,
+        bytes calldata signature
+    )
+        external
+        payable
+        returns (FillResults memory fillResults);
+
     function getOrderInfo(Order calldata order)
         external view returns (OrderInfo memory);
+
+    function getAssetProxy(bytes4 assetProxyId)
+        external
+        view
+        returns (address proxyAddress);
+
+    function protocolFeeMultiplier()
+        external
+        view
+        returns (uint256 multiplier);
 }
