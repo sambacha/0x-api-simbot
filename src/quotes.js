@@ -34,11 +34,13 @@ async function fillSellQuote(opts) {
     const takerTokenAmount =
         toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
     const qs = [
+        ...(/\?(.+)$/.exec(apiPath)[1] || '').split('&'),
         `buyToken=${makerToken}`,
         `sellToken=${takerToken}`,
         `sellAmount=${takerTokenAmount.toString(10)}`,
     ].join('&');
-    const resp = await fetch(`${apiPath}?${qs}`);
+    const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
+    const resp = await fetch(url);
     const quoteResult = await resp.json();
     const quote = {
         ...quoteResult,
@@ -98,7 +100,7 @@ async function fillQuote(quote) {
             ],
         ));
         let success = result.revertData === '0x' &&
-            new BigNumber(result.boughtAmount).gte(0);
+            new BigNumber(result.boughtAmount).gt(0);
         printFillSummary(quote, success, result.revertData);
         return {
             ...quote,

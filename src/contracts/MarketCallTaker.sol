@@ -9,7 +9,7 @@ import './IWETH.sol';
 
 contract MarketCallTaker {
 
-    IWETH private WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     struct FillParams {
@@ -54,7 +54,6 @@ contract MarketCallTaker {
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
 
-
         swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
         for (uint256 i = 0; i < params.orders.length; ++i) {
             swapResult.orderInfos[i] = IExchange(params.exchange)
@@ -78,10 +77,9 @@ contract MarketCallTaker {
                 swapResult.boughtAmount = params.makerToken.balanceOf(address(this));
             }
             if (params.takerToken == ETH) {
-                swapResult.soldAmount = takerBalanceBefore - address(this).balance;
-                swapResult.soldAmount =
-                    swapResult.soldAmount <= params.protocolFeeAmount
-                    ? 0 : swapResult.soldAmount - params.protocolFeeAmount;
+                // Refunds can make this all wrong.
+                swapResult.soldAmount = takerBalanceBefore
+                    - address(this).balance + params.protocolFeeAmount;
             } else {
                 swapResult.soldAmount = takerBalanceBefore -
                     params.takerToken.balanceOf(address(this));
