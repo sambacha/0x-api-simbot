@@ -4,9 +4,10 @@ pragma experimental ABIEncoderV2;
 
 import './IERC20.sol';
 import './HackedWallet.sol';
-import './IExchange.sol';
+import './IGetOrderInfo.sol';
 import './LibERC20Token.sol';
 import './IWETH.sol';
+import './ExchangeProxyDeployer.sol';
 
 contract MarketCallTaker {
 
@@ -21,15 +22,15 @@ contract MarketCallTaker {
         uint256 sellAmount;
         uint256 protocolFeeAmount;
         address spender;
-        IExchange exchange;
+        IGetOrderInfo exchange;
         bytes data;
-        IExchange.Order[] orders;
+        IGetOrderInfo.Order[] orders;
     }
 
     struct SwapResult {
         uint256 boughtAmount;
         uint256 soldAmount;
-        IExchange.OrderInfo[] orderInfos;
+        IGetOrderInfo.OrderInfo[] orderInfos;
         bytes revertData;
         uint32 blockNumber;
         uint256 gasStart;
@@ -43,6 +44,7 @@ contract MarketCallTaker {
         payable
         returns (SwapResult memory swapResult)
     {
+        new ExchangeProxyDeployer().deploy();
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
 
         swapResult.blockNumber = uint32(block.number);
@@ -56,9 +58,9 @@ contract MarketCallTaker {
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
 
-        swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
+        swapResult.orderInfos = new IGetOrderInfo.OrderInfo[](params.orders.length);
         for (uint256 i = 0; i < params.orders.length; ++i) {
-            swapResult.orderInfos[i] = IExchange(params.exchange)
+            swapResult.orderInfos[i] = IGetOrderInfo(params.exchange)
                 .getOrderInfo(params.orders[i]);
         }
 

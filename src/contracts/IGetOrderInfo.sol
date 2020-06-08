@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import './IERC20.sol';
 
-interface IExchange {
+interface IGetOrderInfo {
 
     struct Order {
         address makerAddress;
