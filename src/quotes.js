@@ -66,7 +66,6 @@ async function fillSellQuote(opts) {
 async function fillQuote(quote) {
     const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
     const takerContractAddress = randomAddress();
-    console.log(typeof(quote.sellAmount), typeof(quote.value));
     try {
         const result = normalizeSwapResult(await takerContract.fill({
             to: quote.to,
