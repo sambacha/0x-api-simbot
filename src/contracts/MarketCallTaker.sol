@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.6;
 pragma experimental ABIEncoderV2;
 
@@ -17,6 +18,7 @@ contract MarketCallTaker {
         IERC20 makerToken;
         IERC20 takerToken;
         HackedWallet wallet;
+        uint256 sellAmount;
         uint256 protocolFeeAmount;
         address spender;
         IExchange exchange;
@@ -49,7 +51,7 @@ contract MarketCallTaker {
         if (params.takerToken == ETH) {
             takerBalanceBefore = msg.value - params.protocolFeeAmount;
         } else {
-            params.wallet.pullTokens(params.takerToken);
+            params.wallet.pullTokens(params.takerToken, params.sellAmount);
             takerBalanceBefore = params.takerToken.balanceOf(address(this));
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }

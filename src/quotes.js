@@ -16,17 +16,13 @@ const TOKENS = require('./tokens');
 const ERC20_PROXY = '0x95e6f48254609a6ee006f7d493c8e5fb97094cef';
 const EXCHANGE = '0x61935cbdd02287b511119ddb11aeb42f1593b7ef';
 const BUILD_ROOT = path.resolve(__dirname, '../build');
-const ABIS = {
-    MarketCallTaker: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.abi`)),
-    HackedWallet: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/HackedWallet.abi`)),
-};
-const BYTECODES = {
-    MarketCallTaker: '0x' + fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.bin-runtime`),
-    HackedWallet: '0x' + fs.readFileSync(`${BUILD_ROOT}/HackedWallet.bin-runtime`),
-};
+const ARTIFACTS = {
+    MarketCallTaker: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.output.json`)),
+    HackedWallet: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/HackedWallet.output.json`)),
+}
 
 const eth = new FlexEther({ providerURI: process.env.NODE_RPC });
-const takerContract = new FlexContract(ABIS.MarketCallTaker, { eth });
+const takerContract = new FlexContract(ARTIFACTS.MarketCallTaker.abi, randomAddress(), { eth });
 
 async function fillSellQuote(opts) {
     const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
@@ -34,7 +30,7 @@ async function fillSellQuote(opts) {
     const takerTokenAmount =
         toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
     const qs = [
-        ...(/\?(.+)$/.exec(apiPath)[1] || '').split('&'),
+        ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
         `buyToken=${makerToken}`,
         `sellToken=${takerToken}`,
         `sellAmount=${takerTokenAmount.toString(10)}`,
@@ -70,35 +66,29 @@ async function fillSellQuote(opts) {
 async function fillQuote(quote) {
     const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
     const takerContractAddress = randomAddress();
+    console.log(typeof(quote.sellAmount), typeof(quote.value));
     try {
-        const result = decodeSwapResult(await eth.rpc._send(
-            'eth_call',
-            [
-                {
-                    to: takerContractAddress,
-                    gas: toHex(8e6),
-                    from: TOKENS['ETH'].wallet,
-                    gasPrice: toHex(quote.gasPrice),
-                    value: toHex(quote.value),
-                    data: await takerContract.fill({
-                        to: quote.to,
-                        makerToken: TOKENS[makerToken].address,
-                        takerToken: TOKENS[takerToken].address,
-                        wallet: TOKENS[takerToken].wallet,
-                        spender: quote.spender || ERC20_PROXY,
-                        exchange: EXCHANGE,
-                        data: quote.data,
-                        orders: quote.orders,
-                        protocolFeeAmount: quote.protocolFee.toString(10),
-                    }).encode(),
-                },
-                'latest',
-                {
-                    [takerContractAddress]: { code: BYTECODES.MarketCallTaker },
-                    [TOKENS[takerToken].wallet]: { code: BYTECODES.HackedWallet },
-                },
-            ],
-        ));
+        const result = normalizeSwapResult(await takerContract.fill({
+            to: quote.to,
+            makerToken: TOKENS[makerToken].address,
+            takerToken: TOKENS[takerToken].address,
+            wallet: TOKENS[takerToken].wallet,
+            spender: quote.spender || ERC20_PROXY,
+            exchange: EXCHANGE,
+            data: quote.data,
+            orders: quote.orders,
+            protocolFeeAmount: quote.protocolFee,
+            sellAmount: quote.sellAmount,
+        }).call({
+            gas: 8e6,
+            gasPrice: quote.gasPrice,
+            value: quote.value,
+            from: TOKENS['ETH'].wallet,
+            overrides: {
+                [takerContract.address]: { code: '0x' + ARTIFACTS.MarketCallTaker.deployedBytecode },
+                [TOKENS[takerToken].wallet]: { code: '0x' + ARTIFACTS.HackedWallet.deployedBytecode },
+            },
+        }));
         let success = result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gt(0);
         printFillSummary(quote, success, result.revertData);
@@ -148,26 +138,20 @@ function doesQuoteHaveFallback(quote) {
     }
 }
 
-function decodeSwapResult(encodedResult) {
-    const outputs = ABIS.MarketCallTaker.find(a => a.type === 'function' && a.name === 'fill').outputs;
-    try {
-        const r = AbiEncoder.decodeParameters(outputs, encodedResult)[0];
-        return {
-            gasUsed: parseInt(r.gasStart) - parseInt(r.gasEnd),
-            blockNumber: parseInt(r.blockNumber),
-            revertData: r.revertData,
-            boughtAmount: r.boughtAmount,
-            soldAmount: r.soldAmount,
-            orderInfos: r.orderInfos.map(info => ({
-                orderHash: info.orderHash,
-                orderStatus: parseInt(info.orderStatus),
-                orderTakerAssetFilledAmount: info.orderTakerAssetFilledAmount,
-            })),
-        };
-    } catch (err) {
-        console.error(encodedResult);
-        throw err;
-    }
+function normalizeSwapResult(result) {
+    return {
+        ...result,
+        gasUsed: parseInt(result.gasStart) - parseInt(result.gasEnd),
+        blockNumber: parseInt(result.blockNumber),
+        revertData: result.revertData,
+        boughtAmount: result.boughtAmount,
+        soldAmount: result.soldAmount,
+        orderInfos: result.orderInfos.map(info => ({
+            orderHash: info.orderHash,
+            orderStatus: parseInt(info.orderStatus),
+            orderTakerAssetFilledAmount: info.orderTakerAssetFilledAmount,
+        })),
+    };
 }
 
 module.exports = {
