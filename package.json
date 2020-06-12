@@ -17,7 +17,7 @@
         "lodash": "^4.17.15",
         "node-fetch": "^2.6.0",
         "solc": "^0.6.9",
-        "soluble": "^1.0.3",
+        "soluble": "^1.0.4",
         "web3-eth-abi": "^1.2.6",
         "web3-providers-ipc": "^1.2.6",
         "yargs": "^15.1.0"

@@ -9,10 +9,19 @@ import './LibERC20Token.sol';
 import './IWETH.sol';
 import './ExchangeProxyDeployer.sol';
 
+interface IZrx {
+    function getAllowanceTarget() external view returns (address);
+}
+
 contract MarketCallTaker {
 
     IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+
+    struct ExchangeProxyDependencies {
+        FullMigration.Features features;
+        FullMigration.MigrateOpts migrateOpts;
+    }
 
     struct FillParams {
         address payable to;
@@ -25,6 +34,7 @@ contract MarketCallTaker {
         IGetOrderInfo exchange;
         bytes data;
         IGetOrderInfo.Order[] orders;
+        ExchangeProxyDependencies deps;
     }
 
     struct SwapResult {
@@ -44,9 +54,12 @@ contract MarketCallTaker {
         payable
         returns (SwapResult memory swapResult)
     {
-        new ExchangeProxyDeployer().deploy();
+        ZeroEx zeroEx = new ExchangeProxyDeployer().deploy(
+            params.deps.features,
+            params.deps.migrateOpts
+        );
+        require(params.to == address(zeroEx), "TARGET_MUST_BE_EXCHANGE_PROXY");
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
-
         swapResult.blockNumber = uint32(block.number);
 
         uint256 takerBalanceBefore = 0;

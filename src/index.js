@@ -28,9 +28,13 @@ const ARGV = yargs
 })();
 
 async function _fillSellQuote(logs) {
-    let [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-    if (makerToken === 'ETH') {
-        makerToken = 'WETH';
+    let makerToken, takerToken;
+    while (true) {
+        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+        if (!((makerToken === 'ETH' && takerToken === 'WETH') ||
+            (makerToken === 'WETH' && takerToken === 'ETH'))) {
+            break;
+        }
     }
     const result = await fillSellQuote({
         makerToken,

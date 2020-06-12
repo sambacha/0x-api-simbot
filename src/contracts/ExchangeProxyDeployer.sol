@@ -26,21 +26,17 @@ contract ExchangeProxyDeployer {
 
     receive() external payable {}
 
-    function deploy() external returns (DeployedAddresses memory addrs) {
-        ZeroEx zeroEx = new FullMigration(address(this)).deploy(
+    function deploy(
+        FullMigration.Features calldata features,
+        FullMigration.MigrateOpts calldata opts
+    )
+        external
+        returns (ZeroEx zeroEx)
+    {
+        return new FullMigration(address(this)).deploy(
             address(this),
-            FullMigration.Features({
-                registry: new SimpleFunctionRegistry(),
-                ownable: new Ownable(),
-                tokenSpender: new TokenSpender(),
-                transformERC20: new TransformERC20()
-            }),
-            FullMigration.MigrateOpts({ transformerDeployer: address(this) })
+            features,
+            opts
         );
-        // Transformers.
-        addrs.wethTransformer = address(new WethTransformer(IEtherTokenV06(WETH)));
-        addrs.payTakerTransformer = address(new PayTakerTransformer());
-        addrs.fillQuoteTransformer = address(new FillQuoteTransformer(IExchange(EXCHANGE)));
-        addrs.zeroEx = address(zeroEx);
     }
 }
