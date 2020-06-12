@@ -23,7 +23,7 @@ def get_program_args():
 def get_slippage(swap):
     price = Decimal(swap['buyAmount']) / Decimal(swap['sellAmount'])
     filled_price = Decimal(swap['metadata']['swapResult']['boughtAmount']) / \
-        Decimal(swap['metadata']['swapResult']['soldAmount'])
+        max(Decimal(swap['metadata']['swapResult']['soldAmount']), Decimal(1))
     slippage = (filled_price - price) / price
     return slippage
 

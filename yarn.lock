@@ -888,10 +888,10 @@ solc@^0.6.9:
     semver "^5.5.0"
     tmp "0.0.33"
 
-soluble@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/soluble/-/soluble-1.0.3.tgz#77ec207cd27916a98f9693499bf85cbb09d78a2f"
-  integrity sha512-KAtHdgmJf1mzpNZZtceDyeKJNBSTHW+tPaFfedBVq9wZtnlym+CxLUFeplgxidlc2zM/xPPfIy0I1NLsBimDlQ==
+soluble@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/soluble/-/soluble-1.0.4.tgz#df961bbb6237db24032055c90e5b1aeb5132834e"
+  integrity sha512-z/wXWEZ9jT+v5SVncpYvuNdMhydxGDxecsyvyy78AVd/sjj2WztRimMM59MgB3wzpUY4MfZC3U+//uls5QM4Ew==
   dependencies:
     colors "^1.4.0"
     glob "^7.1.6"
