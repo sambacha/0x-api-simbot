@@ -15,7 +15,7 @@ const {
 const ARGV = yargs
     .string('output').demand('output')
     .string('url').default('url', LIVE_API_PATH)
-    .array('token').default('token', ['ETH', 'DAI', 'USDC'])
+    .array('token').default('token', ['WETH', 'DAI', 'USDC'])
     .number('jobs').default('jobs', 1)
     .argv;
 
@@ -28,9 +28,15 @@ const ARGV = yargs
 })();
 
 async function _fillSellQuote(logs) {
-    let [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-    if (makerToken === 'ETH') {
-        makerToken = 'WETH';
+    let makerToken;
+    let takerToken;
+    while (true) {
+        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
+        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
+        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
+        if (!isMakerEth || !isTakerEth) {
+            break;
+        }
     }
     const result = await fillSellQuote({
         makerToken,

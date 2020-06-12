@@ -5,13 +5,13 @@ const TOKENS = {
         decimals: 18,
         address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         wallet: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-        value: 200,
+        value: 235,
     },
     'WETH': {
         decimals: 18,
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
         wallet: '0x07320deb2713370a3d7b49189fc2f99906e1ae8e',
-        value: 200,
+        value: 235,
     },
     'DAI': {
         decimals: 18,
@@ -29,19 +29,19 @@ const TOKENS = {
         decimals: 18,
         address: '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2',
         wallet: '0x000be27f560fef0253cac4da8411611184356549',
-        value: 342,
+        value: 615,
     },
     'ZRX': {
         decimals: 18,
         address: '0xe41d2489571d322189246dafa5ebde1f4699f498',
         wallet: '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8',
-        value: 0.38,
+        value: 0.36,
     },
     'LINK': {
         decimals: 18,
         address: '0x514910771af9ca656af840dff83e8264ecf986ca',
         wallet: '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8',
-        value: 3.89,
+        value: 4.06,
     },
     'USDT': {
         decimals: 6,
@@ -53,7 +53,7 @@ const TOKENS = {
         decimals: 8,
         address: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
         wallet: '0xc11b1268c1a384e55c48c2391d8d480264a3a7f4',
-        value: 9000,
+        value: 9389,
     },
 };
 
