@@ -9,6 +9,7 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
+const ethjs = require('ethereumjs-util');
 
 const { delay, randomAddress, toHex, toTokenAmount } = require('./utils');
 const TOKENS = require('./tokens');
@@ -53,6 +54,7 @@ async function fillSellQuote(opts) {
             timestamp: Math.floor(quoteTime / 1000),
             responseTime: (Date.now() - quoteTime) / 1000,
             fillDelay: fillDelay,
+            maxSellAmount: quoteResult.sellAmount,
         }
     };
     if (quote.data) {
@@ -63,21 +65,81 @@ async function fillSellQuote(opts) {
     }
 }
 
+async function fillBuyQuote(opts) {
+    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const quoteTime = Date.now();
+    const makerTokenAmount =
+        toTokenAmount(makerToken, new BigNumber(swapValue).div(TOKENS[makerToken].value));
+    const qs = [
+        ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
+        `buyToken=${makerToken}`,
+        `sellToken=${takerToken}`,
+        `buyAmount=${makerTokenAmount.toString(10)}`,
+    ].join('&');
+    const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
+    const resp = await fetch(url);
+    const quoteResult = await resp.json();
+    const quote = {
+        ...quoteResult,
+        // Filter out unused sources.
+        sources: quoteResult.sources.filter(s => s.proportion !== '0'),
+        metadata: {
+            id,
+            makerToken,
+            takerToken,
+            apiPath,
+            side: 'buy',
+            fillAmount: makerTokenAmount.toString(10),
+            fillValue: swapValue,
+            timestamp: Math.floor(quoteTime / 1000),
+            responseTime: (Date.now() - quoteTime) / 1000,
+            fillDelay: fillDelay,
+            maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
+        }
+    };
+    if (quote.data) {
+        return delay(
+            async () => fillQuote(quote),
+            quote.metadata.fillDelay * 1000,
+        );
+    }
+}
+
+function getBuyQuoteMaxSellAmount(quoteResult) {
+    if (quoteResult.data.startsWith('0x415565b0')) {
+        // Exchange proxy `transformERC20()`
+        return new BigNumber(
+            ethjs.bufferToHex(
+                ethjs.toBuffer(quoteResult.data).slice(68, 100),
+            ),
+        ).toString(10);
+    }
+    return BigNumber.sum(...quoteResult.orders.map(o => o.takerAssetAmount))
+        .toString(10);
+}
+
 async function fillQuote(quote) {
-    const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
-    const takerContractAddress = randomAddress();
+    const {
+        side,
+        makerToken,
+        takerToken,
+        fillAmount,
+        fillDelay,
+        fillValue,
+        maxSellAmount,
+    } = quote.metadata;
     try {
         const result = normalizeSwapResult(await takerContract.fill({
             to: quote.to,
             makerToken: TOKENS[makerToken].address,
             takerToken: TOKENS[takerToken].address,
             wallet: TOKENS[takerToken].wallet,
-            spender: quote.spender || ERC20_PROXY,
+            spender: quote.allowanceTarget || ERC20_PROXY,
             exchange: EXCHANGE,
             data: quote.data,
             orders: quote.orders,
             protocolFeeAmount: quote.protocolFee,
-            sellAmount: quote.sellAmount,
+            sellAmount: maxSellAmount,
         }).call({
             gas: 8e6,
             gasPrice: quote.gasPrice,
@@ -108,7 +170,7 @@ function printFillSummary(quote, success, revertData) {
     const fillSize = side === 'sell'
         ? new BigNumber(fillAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2)
         : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
-    const summary = `${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) ${side} after ${fillDelay.toFixed(1)}s`;
+    const summary = `${side.toUpperCase()} ${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) after ${fillDelay.toFixed(1)}s`;
     let composition = quote.sources
         .map(s => `${s.name}: ${s.proportion * 100}%`)
         .join(', ');
@@ -155,4 +217,5 @@ function normalizeSwapResult(result) {
 
 module.exports = {
     fillSellQuote,
+    fillBuyQuote,
 };

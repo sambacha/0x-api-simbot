@@ -16,13 +16,13 @@ const TOKENS = {
     'DAI': {
         decimals: 18,
         address: '0x6b175474e89094c44da98b954eedeac495271d0f',
-        wallet: '0x07bb41df8c1d275c4259cdd0dbf0189d6a9a5f32',
+        wallet: '0x1e0447b19bb6ecfdae1e4ae1694b0c3659614e4e',
         value: 1,
     },
     'USDC': {
         decimals: 6,
         address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-        wallet: '0x0434deed9e80e047579f6f384cc3834351c2b555',
+        wallet: '0xf977814e90da44bfa03b6295a0616a897441acec',
         value: 1,
     },
     'MKR': {
