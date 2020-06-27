@@ -20,10 +20,28 @@ const BUILD_ROOT = path.resolve(__dirname, '../build');
 const ARTIFACTS = {
     MarketCallTaker: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.output.json`)),
     HackedWallet: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/HackedWallet.output.json`)),
+    TransformerDeployer: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/TransformerDeployer.output.json`)),
 }
 
 const eth = new FlexEther({ providerURI: process.env.NODE_RPC });
 const takerContract = new FlexContract(ARTIFACTS.MarketCallTaker.abi, randomAddress(), { eth });
+const transformerDeployer = new FlexContract(ARTIFACTS.TransformerDeployer.abi, '0x80a36559ab9a497fb658325ed771a584eb0f13da', { eth });
+
+async function getExchangeProxyArtifact(artifactName) {
+    const [pkgName, contractName] = artifactName.split('/');
+    return JSON.parse(await fs.promises.readFile(
+        // CHANGE THIS TO YOUR MONOREPO PATH, and compile (no need to build) those packages.
+        `../0x-monorepo/contracts/${pkgName}/test/generated-artifacts/${contractName}.json`,
+    ));
+}
+
+async function getExchangeProxyContract(artifactName, address) {
+    const [pkgName, contractName] = artifactName.split('/');
+    const artifact = await getExchangeProxyArtifact(artifactName);
+    const abi = artifact.compilerOutput.abi;
+    const bytecode = artifact.compilerOutput.evm.bytecode.object;
+    return new FlexContract(abi, address, { eth, bytecode });
+}
 
 async function fillSellQuote(opts) {
     const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
@@ -97,6 +115,14 @@ async function fillBuyQuote(opts) {
             maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
         }
     };
+    if (quoteResult.data.startsWith('0x415565b0')) {
+        quote.data = ethjs.bufferToHex(Buffer.concat([
+            ethjs.toBuffer(quote.data).slice(0, 68),
+            ethjs.setLengthLeft('0x'+new BigNumber(quote.metadata.maxSellAmount).toString(16), 32),
+            ethjs.toBuffer(quote.data).slice(100),
+        ]));
+    }
+
     if (quote.data) {
         return delay(
             async () => fillQuote(quote),
@@ -112,10 +138,10 @@ function getBuyQuoteMaxSellAmount(quoteResult) {
             ethjs.bufferToHex(
                 ethjs.toBuffer(quoteResult.data).slice(68, 100),
             ),
-        ).toString(10);
+        ).times(2).toString(10);
     }
     return BigNumber.sum(...quoteResult.orders.map(o => o.takerAssetAmount))
-        .toString(10);
+        .toString(2);
 }
 
 async function fillQuote(quote) {
@@ -140,14 +166,29 @@ async function fillQuote(quote) {
             orders: quote.orders,
             protocolFeeAmount: quote.protocolFee,
             sellAmount: maxSellAmount,
+            deployer: transformerDeployer.address,
+            deployerData: await (await getExchangeProxyContract('zero-ex/FillQuoteTransformer')).new(EXCHANGE).encode(),
         }).call({
-            gas: 8e6,
+            gas: 20e6,
             gasPrice: quote.gasPrice,
             value: quote.value,
             from: TOKENS['ETH'].wallet,
             overrides: {
                 [takerContract.address]: { code: '0x' + ARTIFACTS.MarketCallTaker.deployedBytecode },
                 [TOKENS[takerToken].wallet]: { code: '0x' + ARTIFACTS.HackedWallet.deployedBytecode },
+                [transformerDeployer.address]: {
+                    code: '0x' + ARTIFACTS.TransformerDeployer.deployedBytecode,
+                    nonce: 3,
+                },
+                ['0x9b81a08ef144e7aa4925f7fd77da1e1b3990e59a']: {
+                    code: '0x',
+                    nonce: 0,
+                },
+                '0x5591360f8c7640fea5771c9682d6b5ecb776e1f8': {
+                    code: (await getExchangeProxyArtifact(
+                        'asset-proxy/DexForwarderBridge',
+                    )).compilerOutput.evm.deployedBytecode.object,
+                },
             },
         }));
         let success = result.revertData === '0x' &&
