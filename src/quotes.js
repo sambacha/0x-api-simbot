@@ -138,10 +138,10 @@ function getBuyQuoteMaxSellAmount(quoteResult) {
             ethjs.bufferToHex(
                 ethjs.toBuffer(quoteResult.data).slice(68, 100),
             ),
-        ).times(2).toString(10);
+        ).times(10).toString(10);
     }
     return BigNumber.sum(...quoteResult.orders.map(o => o.takerAssetAmount))
-        .toString(2);
+        times(10).toString(10);
 }
 
 async function fillQuote(quote) {
