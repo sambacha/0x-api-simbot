@@ -4,7 +4,15 @@ const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
 const _ = require('lodash');
 
-const { forever, getRandomBracketValue, LogWriter, randomHash, writeEntry } = require('./utils');
+const {
+    forever,
+    getRandomBracketValue,
+    getRandomQuotePair,
+    LogWriter,
+    randomHash,
+    updateTokenPrices,
+    writeEntry,
+} = require('./utils');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
 const {
     DELAY_STOPS,
@@ -13,9 +21,10 @@ const {
 } = require('./constants');
 
 const ARGV = yargs
-    .string('output').demand('output')
+    .string('output')
     .array('url').demand('url')
     .array('token').default('token', ['WETH', 'DAI', 'USDC'])
+    .boolean('v0').default('v0', false)
     .boolean('buys').default('buys', false)
     .boolean('sells').default('sells', false)
     .number('jobs').default('jobs', 1)
@@ -25,6 +34,7 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
+    await updateTokenPrices();
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
         _.times(ARGV.jobs, () => forever(() => fillSellQuotes(ARGV.url, logs)));
@@ -35,16 +45,7 @@ const ARGV = yargs
 })();
 
 async function fillSellQuotes(urls, logs) {
-    let makerToken;
-    let takerToken;
-    while (true) {
-        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
-        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
-        if (!isMakerEth || !isTakerEth) {
-            break;
-        }
-    }
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
@@ -65,16 +66,7 @@ async function fillSellQuotes(urls, logs) {
 }
 
 async function fillBuyQuotes(urls, logs) {
-    let makerToken;
-    let takerToken;
-    while (true) {
-        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
-        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
-        if (!isMakerEth || !isTakerEth) {
-            break;
-        }
-    }
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);

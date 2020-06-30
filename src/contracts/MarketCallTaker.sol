@@ -25,8 +25,8 @@ contract MarketCallTaker {
         IExchange exchange;
         bytes data;
         IExchange.Order[] orders;
-        TransformerDeployer deployer;
-        bytes deployerData;
+        TransformerDeployer transformerDeployer;
+        bytes[] transformersDeployData;
     }
 
     struct SwapResult {
@@ -65,7 +65,9 @@ contract MarketCallTaker {
                 .getOrderInfo(params.orders[i]);
         }
 
-        params.deployer.deploy(params.deployerData);
+        if (params.transformersDeployData.length > 0) {
+            params.transformerDeployer.deploy(params.transformersDeployData);
+        }
 
         swapResult.gasStart = gasleft();
         (bool success, bytes memory callResult) =

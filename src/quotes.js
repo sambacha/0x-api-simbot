@@ -1,7 +1,5 @@
 'use strict'
 require('colors');
-const FlexContract = require('flex-contract');
-const FlexEther = require('flex-ether');
 const AbiEncoder = require('web3-eth-abi');
 const BigNumber = require('bignumber.js');
 const process = require('process');
@@ -11,37 +9,31 @@ const path = require('path');
 const _ = require('lodash');
 const ethjs = require('ethereumjs-util');
 
-const { delay, randomAddress, toHex, toTokenAmount } = require('./utils');
+const { delay, loadConfig, randomAddress, toHex, toTokenAmount } = require('./utils');
+const {
+    eth,
+    loadArtifact,
+    createContractFromArtifact,
+    createContractFromArtifactPath,
+} = require('./web3');
 const TOKENS = require('./tokens');
+const CONFIG = loadConfig();
 
-const ERC20_PROXY = '0x95e6f48254609a6ee006f7d493c8e5fb97094cef';
-const EXCHANGE = '0x61935cbdd02287b511119ddb11aeb42f1593b7ef';
-const BUILD_ROOT = path.resolve(__dirname, '../build');
+const ERC20_PROXY = CONFIG.erc20Proxy;
+const EXCHANGE = CONFIG.exchange;
 const ARTIFACTS = {
-    MarketCallTaker: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/MarketCallTaker.output.json`)),
-    HackedWallet: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/HackedWallet.output.json`)),
-    TransformerDeployer: JSON.parse(fs.readFileSync(`${BUILD_ROOT}/TransformerDeployer.output.json`)),
+    MarketCallTaker: loadArtifact(`build/MarketCallTaker.output.json`),
+    HackedWallet: loadArtifact(`build/HackedWallet.output.json`),
+    TransformerDeployer: loadArtifact(`build/TransformerDeployer.output.json`),
 }
-
-const eth = new FlexEther({ providerURI: process.env.NODE_RPC });
-const takerContract = new FlexContract(ARTIFACTS.MarketCallTaker.abi, randomAddress(), { eth });
-const transformerDeployer = new FlexContract(ARTIFACTS.TransformerDeployer.abi, '0x80a36559ab9a497fb658325ed771a584eb0f13da', { eth });
-
-async function getExchangeProxyArtifact(artifactName) {
-    const [pkgName, contractName] = artifactName.split('/');
-    return JSON.parse(await fs.promises.readFile(
-        // CHANGE THIS TO YOUR MONOREPO PATH, and compile (no need to build) those packages.
-        `../0x-monorepo/contracts/${pkgName}/test/generated-artifacts/${contractName}.json`,
-    ));
-}
-
-async function getExchangeProxyContract(artifactName, address) {
-    const [pkgName, contractName] = artifactName.split('/');
-    const artifact = await getExchangeProxyArtifact(artifactName);
-    const abi = artifact.compilerOutput.abi;
-    const bytecode = artifact.compilerOutput.evm.bytecode.object;
-    return new FlexContract(abi, address, { eth, bytecode });
-}
+const takerContract = createContractFromArtifact(
+    ARTIFACTS.MarketCallTaker,
+    CONFIG.taker,
+);
+const transformerDeployer = createContractFromArtifact(
+    ARTIFACTS.TransformerDeployer,
+    CONFIG.transformers.deployer,
+);
 
 async function fillSellQuote(opts) {
     const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
@@ -115,14 +107,6 @@ async function fillBuyQuote(opts) {
             maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
         }
     };
-    if (quoteResult.data.startsWith('0x415565b0')) {
-        quote.data = ethjs.bufferToHex(Buffer.concat([
-            ethjs.toBuffer(quote.data).slice(0, 68),
-            ethjs.setLengthLeft('0x'+new BigNumber(quote.metadata.maxSellAmount).toString(16), 32),
-            ethjs.toBuffer(quote.data).slice(100),
-        ]));
-    }
-
     if (quote.data) {
         return delay(
             async () => fillQuote(quote),
@@ -132,16 +116,18 @@ async function fillBuyQuote(opts) {
 }
 
 function getBuyQuoteMaxSellAmount(quoteResult) {
-    if (quoteResult.data.startsWith('0x415565b0')) {
+    const selector = quoteResult.data.slice(0, 10);;
+    if (selector === '0x415565b0') {
         // Exchange proxy `transformERC20()`
         return new BigNumber(
             ethjs.bufferToHex(
                 ethjs.toBuffer(quoteResult.data).slice(68, 100),
             ),
-        ).times(10).toString(10);
+        ).toString(10);
     }
-    return BigNumber.sum(...quoteResult.orders.map(o => o.takerAssetAmount))
-        times(10).toString(10);
+    return BigNumber
+        .sum(...quoteResult.orders.map(o => o.takerAssetAmount))
+        .toString(10);
 }
 
 async function fillQuote(quote) {
@@ -154,6 +140,8 @@ async function fillQuote(quote) {
         fillValue,
         maxSellAmount,
     } = quote.metadata;
+    const transformers = await getTransformersOverrides();
+    const overrides = await getOverrides();
     try {
         const result = normalizeSwapResult(await takerContract.fill({
             to: quote.to,
@@ -166,29 +154,34 @@ async function fillQuote(quote) {
             orders: quote.orders,
             protocolFeeAmount: quote.protocolFee,
             sellAmount: maxSellAmount,
-            deployer: transformerDeployer.address,
-            deployerData: await (await getExchangeProxyContract('zero-ex/FillQuoteTransformer')).new(EXCHANGE).encode(),
+            transformerDeployer: transformerDeployer.address,
+            transformersDeployData: transformers.map(({deployData}) => deployData),
         }).call({
             gas: 20e6,
             gasPrice: quote.gasPrice,
             value: quote.value,
             from: TOKENS['ETH'].wallet,
             overrides: {
-                [takerContract.address]: { code: '0x' + ARTIFACTS.MarketCallTaker.deployedBytecode },
-                [TOKENS[takerToken].wallet]: { code: '0x' + ARTIFACTS.HackedWallet.deployedBytecode },
-                [transformerDeployer.address]: {
-                    code: '0x' + ARTIFACTS.TransformerDeployer.deployedBytecode,
-                    nonce: 3,
-                },
-                ['0x9b81a08ef144e7aa4925f7fd77da1e1b3990e59a']: {
-                    code: '0x',
-                    nonce: 0,
-                },
-                '0x5591360f8c7640fea5771c9682d6b5ecb776e1f8': {
-                    code: (await getExchangeProxyArtifact(
-                        'asset-proxy/DexForwarderBridge',
-                    )).compilerOutput.evm.deployedBytecode.object,
-                },
+                [takerContract.address]: { code: ARTIFACTS.MarketCallTaker.deployedBytecode },
+                [TOKENS[takerToken].wallet]: { code: ARTIFACTS.HackedWallet.deployedBytecode },
+                ...(transformers.length > 0
+                    ? {
+                        [transformerDeployer.address]: {
+                            code: ARTIFACTS.TransformerDeployer.deployedBytecode,
+                            nonce: transformers[0].deploymentNonce,
+                        },
+                        // Reset state for transformers to be re-deployed.
+                        ...(_.zipObject(
+                            transformers.map(({address}) => address),
+                            transformers.map(t => ({
+                                code: '0x',
+                                nonce: 0,
+                                balance: t.balance,
+                            })),
+                        )),
+                    } : {}
+                ),
+                ...overrides,
             },
         }));
         let success = result.revertData === '0x' &&
@@ -204,6 +197,37 @@ async function fillQuote(quote) {
     } catch (err) {
         console.error(`${takerToken} -> ${makerToken}`, err);
     }
+}
+
+async function getTransformersOverrides() {
+    const overrides = _.get(CONFIG, ['transformers', 'overridesByNonce'], {});
+    const transformers = [];
+    for (const nonce of Object.keys(overrides).map(k => parseInt(k))) {
+        const override = overrides[nonce];
+        transformers.push({
+            deploymentNonce: nonce,
+            deployData: await createContractFromArtifactPath(override.artifactPath)
+                .new(...(override.constructorArgs || [])).encode(),
+            address: toTransformerAddress(CONFIG.transformers.deployer, nonce),
+            balance: override.balance,
+        });
+    }
+    return transformers.sort((a, b) => a.deploymentNonce - b.deploymentNonce);
+}
+
+async function getOverrides() {
+    return _.mapValues(
+        _.get(CONFIG, ['overrides'], {}),
+        ({ artifactPath, balance, nonce }) => ({
+            code: loadArtifact(artifactPath).deployedBytecode,
+            balance: balance,
+            nonce: nonce,
+        }),
+    );
+}
+
+function toTransformerAddress(deployer, nonce) {
+    return ethjs.bufferToHex(ethjs.rlphash([deployer, nonce]).slice(12));
 }
 
 function printFillSummary(quote, success, revertData) {

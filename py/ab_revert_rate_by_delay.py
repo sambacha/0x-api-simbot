@@ -21,6 +21,7 @@ data = load_ab_data(args.path)
 print(f'Loaded {len(data)} data items')
 
 counts_by_delay_by_url = {}
+urls = set()
 for d in data:
     for url, swap in d.items():
         delay = get_min_delay(swap)
@@ -29,8 +30,9 @@ for d in data:
             counts_by_delay_by_url[delay].get(url, { 'reverts': 0, 'total': 0 })
         if not is_successful_swap(swap):
             counts_by_delay_by_url[delay][url]['reverts'] += 1
+            urls.add(url)
         counts_by_delay_by_url[delay][url]['total'] += 1
-urls = sorted(list(list(counts_by_delay_by_url.values())[0].keys()))
+urls = sorted(urls)
 delays = sorted(list(counts_by_delay_by_url.keys()))
 
 sns.catplot(

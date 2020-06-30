@@ -4,7 +4,7 @@ const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
 const _ = require('lodash');
 
-const { forever, getRandomBracketValue, LogWriter } = require('./utils');
+const { forever, getRandomBracketValue, getRandomQuotePair, LogWriter, updateTokenPrices } = require('./utils');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
 const {
     DELAY_STOPS,
@@ -13,9 +13,10 @@ const {
 } = require('./constants');
 
 const ARGV = yargs
-    .string('output').demand('output')
+    .string('output')
     .string('url').default('url', LIVE_API_PATH)
     .array('token').default('token', ['WETH', 'DAI', 'USDC'])
+    .boolean('v0').default('v0', false)
     .boolean('buys').default('buys', false)
     .boolean('sells').default('sells', false)
     .number('jobs').default('jobs', 1)
@@ -25,6 +26,7 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
+    await updateTokenPrices();
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
         _.times(ARGV.jobs, () => forever(() => _fillSellQuote(logs)));
@@ -35,16 +37,7 @@ const ARGV = yargs
 })();
 
 async function _fillSellQuote(logs) {
-    let makerToken;
-    let takerToken;
-    while (true) {
-        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
-        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
-        if (!isMakerEth || !isTakerEth) {
-            break;
-        }
-    }
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
     const result = await fillSellQuote({
         makerToken,
         takerToken,
@@ -56,16 +49,7 @@ async function _fillSellQuote(logs) {
 }
 
 async function _fillBuyQuote(logs) {
-    let makerToken;
-    let takerToken;
-    while (true) {
-        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
-        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
-        if (!isMakerEth || !isTakerEth) {
-            break;
-        }
-    }
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
     const result = await fillBuyQuote({
         makerToken,
         takerToken,
