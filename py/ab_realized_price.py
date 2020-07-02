@@ -21,7 +21,7 @@ def get_program_args():
 def get_realized_price(swap):
     result = swap['metadata']['swapResult']
     bought = Decimal(result['boughtAmount'])
-    sold = Decimal(swap['sellAmount'])
+    sold = Decimal(result['soldAmount'])
     return float(bought / sold)
 
 args = get_program_args()

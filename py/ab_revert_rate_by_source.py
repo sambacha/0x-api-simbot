@@ -21,6 +21,7 @@ data = load_ab_data(args.path)
 print(f'Loaded {len(data)} data items')
 
 counts_by_source_by_url = {}
+urls = set()
 for d in data:
     for url, swap in d.items():
         for source in swap['sources']:
@@ -30,12 +31,14 @@ for d in data:
                 counts_by_source_by_url[source].get(url, { 'reverts': 0, 'total': 0 })
             if not is_successful_swap(swap):
                 counts_by_source_by_url[source][url]['reverts'] += 1
+                urls.add(url)
             counts_by_source_by_url[source][url]['total'] += 1
-urls = sorted(list(list(counts_by_source_by_url.values())[0].keys()))
+urls = sorted(urls)
 for counts_by_url in counts_by_source_by_url.values():
     for url in urls:
         counts_by_url[url] = counts_by_url.get(url, { 'reverts': 0, 'total': 0 })
 sources = sorted(list(s for s in counts_by_source_by_url.keys()))
+print(counts_by_source_by_url)
 
 sns.catplot(
     x='source',

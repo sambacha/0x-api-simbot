@@ -7,6 +7,7 @@ import './HackedWallet.sol';
 import './IExchange.sol';
 import './LibERC20Token.sol';
 import './IWETH.sol';
+import './TransformerDeployer.sol';
 
 contract MarketCallTaker {
 
@@ -24,6 +25,8 @@ contract MarketCallTaker {
         IExchange exchange;
         bytes data;
         IExchange.Order[] orders;
+        TransformerDeployer transformerDeployer;
+        bytes[] transformersDeployData;
     }
 
     struct SwapResult {
@@ -60,6 +63,10 @@ contract MarketCallTaker {
         for (uint256 i = 0; i < params.orders.length; ++i) {
             swapResult.orderInfos[i] = IExchange(params.exchange)
                 .getOrderInfo(params.orders[i]);
+        }
+
+        if (params.transformersDeployData.length > 0) {
+            params.transformerDeployer.deploy(params.transformersDeployData);
         }
 
         swapResult.gasStart = gasleft();

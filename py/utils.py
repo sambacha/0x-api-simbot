@@ -36,6 +36,4 @@ def get_min_delay(swap):
 
 def is_successful_swap(swap):
     result = swap['metadata']['swapResult']
-    if swap['metadata']['takerToken'] == 'ETH':
-        return True
     return result['revertData'] == '0x' and int(result['boughtAmount']) != 0

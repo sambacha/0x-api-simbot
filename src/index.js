@@ -4,8 +4,8 @@ const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
 const _ = require('lodash');
 
-const { forever, getRandomBracketValue, LogWriter } = require('./utils');
-const { fillSellQuote } = require('./quotes');
+const { forever, getRandomBracketValue, getRandomQuotePair, LogWriter, updateTokenPrices } = require('./utils');
+const { fillBuyQuote, fillSellQuote } = require('./quotes');
 const {
     DELAY_STOPS,
     FILL_STOPS,
@@ -13,9 +13,12 @@ const {
 } = require('./constants');
 
 const ARGV = yargs
-    .string('output').demand('output')
+    .string('output')
     .string('url').default('url', LIVE_API_PATH)
     .array('token').default('token', ['WETH', 'DAI', 'USDC'])
+    .boolean('v0').default('v0', false)
+    .boolean('buys').default('buys', false)
+    .boolean('sells').default('sells', false)
     .number('jobs').default('jobs', 1)
     .argv;
 
@@ -23,22 +26,31 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
+    await updateTokenPrices();
     const logs = new LogWriter(ARGV.output);
-    _.times(ARGV.jobs, () => forever(() => _fillSellQuote(logs)));
+    if (ARGV.sells || !ARGV.buys) {
+        _.times(ARGV.jobs, () => forever(() => _fillSellQuote(logs)));
+    }
+    if (ARGV.buys || !ARGV.sells) {
+        _.times(ARGV.jobs, () => forever(() => _fillBuyQuote(logs)));
+    }
 })();
 
 async function _fillSellQuote(logs) {
-    let makerToken;
-    let takerToken;
-    while (true) {
-        [makerToken, takerToken] = _.sampleSize(ARGV.token, 2);
-        const isMakerEth = ['ETH', 'WETH'].includes(makerToken);
-        const isTakerEth = ['ETH', 'WETH'].includes(takerToken);
-        if (!isMakerEth || !isTakerEth) {
-            break;
-        }
-    }
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
     const result = await fillSellQuote({
+        makerToken,
+        takerToken,
+        apiPath: ARGV.url,
+        swapValue: getRandomBracketValue(FILL_STOPS),
+        fillDelay: getRandomBracketValue(DELAY_STOPS),
+    });
+    await logs.writeObject(result);
+}
+
+async function _fillBuyQuote(logs) {
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
+    const result = await fillBuyQuote({
         makerToken,
         takerToken,
         apiPath: ARGV.url,
