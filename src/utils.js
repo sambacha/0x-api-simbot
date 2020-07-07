@@ -47,7 +47,11 @@ async function delay(cb, delay) {
 
 function forever(cb) {
     const repeater = async () => {
-        await cb();
+        try {
+            await cb();
+        } catch (err) {
+            console.error(err);
+        }
         setTimeout(repeater, 0);
     };
     repeater();
