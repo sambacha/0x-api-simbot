@@ -231,11 +231,11 @@ function toTransformerAddress(deployer, nonce) {
 }
 
 function printFillSummary(quote, success, revertData) {
-    const { side, makerToken, takerToken, fillAmount, fillDelay, fillValue } = quote.metadata;
-    const fillSize = side === 'sell'
-        ? new BigNumber(fillAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2)
-        : new BigNumber(fillAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
-    const summary = `${side.toUpperCase()} ${takerToken.bold}->${makerToken.bold} ${fillSize.yellow} ($${fillValue.toFixed(2)}) after ${fillDelay.toFixed(1)}s`;
+    const { side, makerToken, takerToken, fillDelay, fillValue } = quote.metadata;
+    let { sellAmount, buyAmount } = quote;
+    sellAmount = new BigNumber(sellAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2);
+    buyAmount = new BigNumber(buyAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
+    const summary = `${side.toUpperCase()} ${takerToken.bold}->${makerToken.bold} ${sellAmount.yellow} -> ${buyAmount.yellow} ($${fillValue.toFixed(2)}) after ${fillDelay.toFixed(1)}s`;
     let composition = quote.sources
         .map(s => `${s.name}: ${s.proportion * 100}%`)
         .join(', ');

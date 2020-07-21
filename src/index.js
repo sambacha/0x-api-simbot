@@ -5,6 +5,7 @@ const yargs = require('yargs');
 const _ = require('lodash');
 
 const { forever, getRandomBracketValue, getRandomQuotePair, LogWriter, updateTokenPrices } = require('./utils');
+const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
 const {
     DELAY_STOPS,
@@ -13,13 +14,45 @@ const {
 } = require('./constants');
 
 const ARGV = yargs
-    .string('output')
-    .string('url').default('url', LIVE_API_PATH)
-    .array('token').default('token', ['WETH', 'DAI', 'USDC'])
-    .boolean('v0').default('v0', false)
-    .boolean('buys').default('buys', false)
-    .boolean('sells').default('sells', false)
-    .number('jobs').default('jobs', 1)
+    .option('output', {
+        alias: 'o',
+        type: 'string',
+        describe: 'JSON file to output results to',
+    })
+    .option('url', {
+        alias: 'u',
+        type: 'string',
+        demandOption: true,
+        default: LIVE_API_PATH,
+        describe: 'swap/quote endpoint URL'
+    })
+    .option('token', {
+        alias: 't',
+        type: 'array',
+        choices: Object.keys(TOKENS),
+        default: ['WETH', 'DAI', 'USDC'],
+        describe: 'token to use in quotes (can be repeated)'
+    })
+    .option('v0', {
+        type: 'boolean',
+        describe: 'run in v0 compat mode',
+    })
+    .option('buys', {
+        alias: 'buy',
+        type: 'boolean',
+        describe: 'only perform buys',
+    })
+    .option('sells', {
+        alias: 'sell',
+        type: 'boolean',
+        describe: 'only perform sells',
+    })
+    .option('jobs', {
+        alias: 'j',
+        type: 'number',
+        default: 8,
+        describe: 'number of jobs/quotes to run in parallel'
+    })
     .argv;
 
 (async () => {

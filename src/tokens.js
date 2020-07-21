@@ -64,6 +64,20 @@ const TOKENS = {
         value: 9389,
         cgId: 'wrapped-bitcoin',
     },
+    'renBTC': {
+        decimals: 8,
+        address: '0xeb4c2781e4eba804ce9a9803c67d0893436bb27d',
+        wallet: '0xd7067192df19c415ee35cc86708020eaf924cd75',
+        value: 9389,
+        cgId: 'wrapped-bitcoin',
+    },
+    'sBTC': {
+        decimals: 18,
+        address: '0xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6',
+        wallet: '0x8af360008769a6fd540cb787ba9abe7066fee9f3',
+        value: 9389,
+        cgId: 'wrapped-bitcoin',
+    },
     'KNC': {
         decimals: 18,
         address: '0xdd974d5c2e2928dea5f71b9825b8b646686bd200',
