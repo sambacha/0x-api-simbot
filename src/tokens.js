@@ -11,7 +11,7 @@ const TOKENS = {
     'WETH': {
         decimals: 18,
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-        wallet: '0x57757e3d981446d585af0d9ae4d7df6d64647806',
+        wallet: '0x5b67871c3a857de81a1ca0f9f7945e5670d986dc',
         value: 235,
         cgId: 'weth',
     },
