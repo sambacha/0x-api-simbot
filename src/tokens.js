@@ -67,7 +67,7 @@ const TOKENS = {
     'renBTC': {
         decimals: 8,
         address: '0xeb4c2781e4eba804ce9a9803c67d0893436bb27d',
-        wallet: '0xd7067192df19c415ee35cc86708020eaf924cd75',
+        wallet: '0x9f6aef5abe4f5963f3c0919814f0e691a1d6de6d',
         value: 9389,
         cgId: 'wrapped-bitcoin',
     },
