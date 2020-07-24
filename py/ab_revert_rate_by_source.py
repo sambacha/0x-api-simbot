@@ -38,7 +38,6 @@ for counts_by_url in counts_by_source_by_url.values():
     for url in urls:
         counts_by_url[url] = counts_by_url.get(url, { 'reverts': 0, 'total': 0 })
 sources = sorted(list(s for s in counts_by_source_by_url.keys()))
-print(counts_by_source_by_url)
 
 sns.catplot(
     x='source',
