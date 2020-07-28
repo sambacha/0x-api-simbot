@@ -19,12 +19,14 @@ const {
 const TOKENS = require('./tokens');
 const CONFIG = loadConfig();
 
+const GST_ADDRESS = '0x0000000000b3F879cb30FE243b4Dfee438691c04';
 const ERC20_PROXY = CONFIG.erc20Proxy;
 const EXCHANGE = CONFIG.exchange;
 const ARTIFACTS = {
     MarketCallTaker: loadArtifact(`build/MarketCallTaker.output.json`),
     HackedWallet: loadArtifact(`build/HackedWallet.output.json`),
     TransformerDeployer: loadArtifact(`build/TransformerDeployer.output.json`),
+    NoGST: loadArtifact(`build/NoGST.output.json`),
 }
 const takerContract = createContractFromArtifact(
     ARTIFACTS.MarketCallTaker,
@@ -164,6 +166,7 @@ async function fillQuote(quote) {
             overrides: {
                 [takerContract.address]: { code: ARTIFACTS.MarketCallTaker.deployedBytecode },
                 [TOKENS[takerToken].wallet]: { code: ARTIFACTS.HackedWallet.deployedBytecode },
+                [GST_ADDRESS]: { code: ARTIFACTS.NoGST.deployedBytecode },
                 ...(transformers.length > 0
                     ? {
                         [transformerDeployer.address]: {
