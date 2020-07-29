@@ -17,6 +17,7 @@ def get_program_args():
     args.add_argument('--forwarder', action='store_true', help='only forwarder (ETH->X) swaps')
     args.add_argument('--tokens', type=str, help='whitelisted tokens')
     args.add_argument('--fees', action='store_true', help='include protocol fees')
+    args.add_argument('--no-native', action='store_true', help='exclude native orders')
     return args.parse_args()
 
 args = get_program_args()
@@ -25,15 +26,19 @@ tokens = args.tokens.split(',') if args.tokens else None
 print(f'Loaded {len(data)} data items')
 
 costs_by_url_by_value = {}
-urls = set()
+urls = sorted(set(list(itertools.chain(*(d.keys() for d in data)))))
 for d in data:
     if not all(is_successful_swap(swap) for swap in d.values()):
         continue
+    costs = {}
     for url, swap in d.items():
         metadata = swap['metadata']
-        if args.tokens:
+        if tokens:
             if metadata['makerToken'] not in tokens \
                 or metadata['takerToken'] not in tokens:
+                continue
+        if args.no_native:
+            if any(s['name'] == '0x' for s in swap['sources']):
                 continue
         if args.forwarder:
             if metadata['takerToken'] != 'ETH':
@@ -48,13 +53,13 @@ for d in data:
             # Express fees in units of gas
             fees = int(swap['protocolFee']) - int(metadata['swapResult']['ethBalance'])
             fees = max(0, fees // int(swap['gasPrice']))
-        costs_by_url_by_value[url] = costs_by_url_by_value.get(url, {})
+        costs[url] = gas = metadata['swapResult']['gasUsed'] + fees
+    if len(urls) == len(list(costs.keys())):
         value = get_max_value(swap)
-        costs_by_url_by_value[url][value] = costs_by_url_by_value[url].get(value, [])
-        gas = metadata['swapResult']['gasUsed'] + fees
-        costs_by_url_by_value[url][value].append(gas)
-        urls.add(url)
-urls = sorted(urls)
+        for url in costs:
+            costs_by_url_by_value[url] = costs_by_url_by_value.get(url, {})
+            costs_by_url_by_value[url][value] = costs_by_url_by_value[url].get(value, [])
+            costs_by_url_by_value[url][value].append(costs[url])
 
 sns.catplot(
     x='value',
