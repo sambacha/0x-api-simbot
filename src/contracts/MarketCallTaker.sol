@@ -37,6 +37,7 @@ contract MarketCallTaker {
         uint32 blockNumber;
         uint256 gasStart;
         uint256 gasEnd;
+        uint256 ethBalance;
     }
 
     using LibERC20Token for IERC20;
@@ -94,6 +95,7 @@ contract MarketCallTaker {
                     params.takerToken.balanceOf(address(this));
             }
         }
+        swapResult.ethBalance = address(this).balance;
     }
 
     receive() payable external {}

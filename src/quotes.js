@@ -275,6 +275,7 @@ function normalizeSwapResult(result) {
         revertData: result.revertData,
         boughtAmount: result.boughtAmount,
         soldAmount: result.soldAmount,
+        ethBalance: result.ethBalance,
         orderInfos: result.orderInfos.map(info => ({
             orderHash: info.orderHash,
             orderStatus: parseInt(info.orderStatus),
