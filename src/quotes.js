@@ -57,7 +57,7 @@ async function fillSellQuote(opts) {
 }
 
 async function fillBuyQuote(opts) {
-    const quote = zeroEx.getSellQuote(opts);
+    const quote = await zeroEx.getSellQuote(opts);
     if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
