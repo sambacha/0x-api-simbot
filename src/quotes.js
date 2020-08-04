@@ -9,13 +9,9 @@ const path = require('path');
 const _ = require('lodash');
 const ethjs = require('ethereumjs-util');
 
-const {
-    delay,
-    loadConfig,
-    randomAddress,
-    toHex,
-    toTokenAmount,
-} = require('./utils');
+const zeroEx = require('./quote_sources/zero_ex');
+const oneInch = require('./quote_sources/one_inch');
+const { delay, loadConfig, randomAddress, toHex, toTokenAmount } = require('./utils');
 const {
     eth,
     loadArtifact,
@@ -48,84 +44,25 @@ const transformerDeployer = createContractFromArtifact(
 const FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE = {};
 
 async function fillSellQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, apiPathId, fillDelay, id } = opts;
-    const quoteTime = Date.now();
-    const takerTokenAmount =
-        toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
-    const qs = [
-        ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
-        `buyToken=${makerToken}`,
-        `sellToken=${takerToken}`,
-        `sellAmount=${takerTokenAmount.toString(10)}`,
-    ].join('&');
-    const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
-    const resp = await fetch(url);
-    const quoteResult = await resp.json();
-    const quote = {
-        ...quoteResult,
-        // Filter out unused sources.
-        sources: quoteResult.sources.filter(s => s.proportion !== '0'),
-        metadata: {
-            id,
-            makerToken,
-            takerToken,
-            apiURL: apiPathId,
-            side: 'sell',
-            fillAmount: takerTokenAmount.toString(10),
-            fillValue: swapValue,
-            timestamp: Math.floor(quoteTime / 1000),
-            responseTime: (Date.now() - quoteTime) / 1000,
-            fillDelay: fillDelay,
-            maxSellAmount: quoteResult.sellAmount,
-            ethPrice: TOKENS['ETH'].price,
-            sellTokenPrice: TOKENS[takerToken].price,
-            buyTokenPrice: TOKENS[makerToken].price,
-        }
-    };
-    if (quote.data) {
+    let quote;
+    if (opts.apiPath.includes('1inch')) {
+        quote = await oneInch.getSellQuote(opts);
+    } else {
+        quote = await zeroEx.getSellQuote(opts);
+    }
+    if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
             quote.metadata.fillDelay * 1000,
         );
+    } else {
+        await delay(() => {}, 10000);
     }
 }
 
 async function fillBuyQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, apiPathId, fillDelay, id } = opts;
-    const quoteTime = Date.now();
-    const makerTokenAmount =
-        toTokenAmount(makerToken, new BigNumber(swapValue).div(TOKENS[makerToken].value));
-    const qs = [
-        ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
-        `buyToken=${makerToken}`,
-        `sellToken=${takerToken}`,
-        `buyAmount=${makerTokenAmount.toString(10)}`,
-    ].join('&');
-    const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
-    const resp = await fetch(url);
-    const quoteResult = await resp.json();
-    const quote = {
-        ...quoteResult,
-        // Filter out unused sources.
-        sources: quoteResult.sources.filter(s => s.proportion !== '0'),
-        metadata: {
-            id,
-            makerToken,
-            takerToken,
-            apiURL: apiPathId,
-            side: 'buy',
-            fillAmount: makerTokenAmount.toString(10),
-            fillValue: swapValue,
-            timestamp: Math.floor(quoteTime / 1000),
-            responseTime: (Date.now() - quoteTime) / 1000,
-            fillDelay: fillDelay,
-            maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
-            ethPrice: TOKENS['ETH'].price,
-            sellTokenPrice: TOKENS[takerToken].price,
-            buyTokenPrice: TOKENS[makerToken].price,
-        }
-    };
-    if (quote.data) {
+    const quote = zeroEx.getSellQuote(opts);
+    if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
             quote.metadata.fillDelay * 1000,
@@ -133,30 +70,10 @@ async function fillBuyQuote(opts) {
     }
 }
 
-function getBuyQuoteMaxSellAmount(quoteResult) {
-    const selector = quoteResult.data.slice(0, 10);;
-    if (selector === '0x415565b0') {
-        // Exchange proxy `transformERC20()`
-        return new BigNumber(
-            ethjs.bufferToHex(
-                ethjs.toBuffer(quoteResult.data).slice(68, 100),
-            ),
-        ).toString(10);
-    }
-    return BigNumber
-        .sum(...quoteResult.orders.map(o => o.takerAssetAmount))
-        .toString(10);
-}
-
 async function fillQuote(quote) {
     const {
-        id,
-        side,
         makerToken,
         takerToken,
-        fillAmount,
-        fillDelay,
-        fillValue,
         maxSellAmount,
     } = quote.metadata;
     const transformers = await getTransformersOverrides();
