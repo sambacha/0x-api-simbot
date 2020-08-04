@@ -84,7 +84,14 @@ const TOKENS = {
         wallet: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8',
         value: 1.17,
         cgId: 'kyber-network',
-    }
+    },
+    'BAL': {
+        decimals: 18,
+        address: '0xba100000625a3754423978a60c9317c58a424e3d',
+        wallet: '0xcdcebf1f28678eb4a1478403ba7f34c94f7ddbc5',
+        value: 10,
+        cgId: 'balancer',
+    },
 };
 
 module.exports = TOKENS;

@@ -269,18 +269,12 @@ function doesQuoteHaveFallback(quote) {
 
 function normalizeSwapResult(result) {
     return {
-        ...result,
         gasUsed: parseInt(result.gasStart) - parseInt(result.gasEnd),
         blockNumber: parseInt(result.blockNumber),
         revertData: result.revertData,
         boughtAmount: result.boughtAmount,
         soldAmount: result.soldAmount,
         ethBalance: result.ethBalance,
-        orderInfos: result.orderInfos.map(info => ({
-            orderHash: info.orderHash,
-            orderStatus: parseInt(info.orderStatus),
-            orderTakerAssetFilledAmount: info.orderTakerAssetFilledAmount,
-        })),
     };
 }
 
