@@ -12,6 +12,7 @@ const {
     randomHash,
     updateTokenPrices,
     writeEntry,
+    delay,
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
@@ -76,6 +77,8 @@ const ARGV = yargs
     if (ARGV.buys || !ARGV.sells) {
         _.times(ARGV.jobs, () => forever(() => fillBuyQuotes(ARGV.url, logs)));
     }
+    // Keep token prices up to date for long running tests
+    forever(() => updateTokenPrices(), 300000);
 })();
 
 async function fillSellQuotes(urls, logs) {

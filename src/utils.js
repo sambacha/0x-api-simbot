@@ -45,10 +45,10 @@ async function delay(cb, delay) {
     });
 }
 
-function forever(cb) {
+function forever(cb, delay = 0) {
     const repeater = async () => {
         await cb();
-        setTimeout(repeater, 0);
+        setTimeout(repeater, delay);
     };
     repeater();
 }
