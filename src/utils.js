@@ -122,7 +122,6 @@ function getRandomQuotePair(tokens, opts = {}) {
 
 async function updateTokenPrices() {
     console.info('Updating token prices from coingecko...');
-    const symbols = Object.keys(TOKENS);
     const cgQueryParams = [
         `ids=${Object.values(TOKENS).map(i => i.cgId).join(',')}`,
         `vs_currencies=usd`,

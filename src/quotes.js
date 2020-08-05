@@ -84,7 +84,7 @@ async function fillQuote(quote) {
         : await eth.getBlockNumber();
     FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE[id] = blockNumber;
     try {
-        const result = normalizeSwapResult(await takerContract.fill({
+        let result = normalizeSwapResult(await takerContract.fill({
             to: quote.to,
             makerToken: TOKENS[makerToken].address,
             takerToken: TOKENS[takerToken].address,
@@ -129,7 +129,13 @@ async function fillQuote(quote) {
         }));
         let success = result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gt(0);
-        printFillSummary(quote, success, result.revertData);
+        let boughtAmountUsd = new BigNumber(result.boughtAmount).div(10 ** TOKENS[makerToken].decimals).times(TOKENS[makerToken].value);
+        let gasUsedUsd = new BigNumber(result.gasUsed).times(quote.gasPrice).times(1e-18).times(TOKENS['ETH'].value);
+        let protocolFeeUsd = new BigNumber(result.protocolFeePaid).times(1e-18).times(TOKENS['ETH'].value);
+        let costUsd = gasUsedUsd.plus(protocolFeeUsd);
+        let adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
+        result = { ...result, adjustedBoughtAmountUsd, costUsd, }
+        printFillSummary(quote, success, result);
         return {
             ...quote,
             metadata: {
@@ -173,7 +179,7 @@ function toTransformerAddress(deployer, nonce) {
     return ethjs.bufferToHex(ethjs.rlphash([deployer, nonce]).slice(12));
 }
 
-function printFillSummary(quote, success, revertData) {
+function printFillSummary(quote, success, result) {
     const { side, makerToken, takerToken, fillDelay, fillValue } = quote.metadata;
     let { sellAmount, buyAmount } = quote;
     sellAmount = new BigNumber(sellAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2);
@@ -186,9 +192,13 @@ function printFillSummary(quote, success, revertData) {
         composition = `${composition} (+ fallback)`;
     }
     if (success) {
-        console.log(`${summary} @ ${quote.metadata.apiURL.bold}\n\t${'✔ PASS'.green.bold}\n\t${composition}`);
+        let soldAmount = new BigNumber(result.soldAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2);
+        let boughtAmount = new BigNumber(result.boughtAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
+        let gasUsed = new BigNumber(result.gasUsed);
+        let usdDisplay = `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${result.costUsd.toFixed(2).red})`
+        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold} ${soldAmount.yellow} -> ${boughtAmount.yellow} ${usdDisplay}\n\t${composition} ${gasUsed}`);
     } else {
-        console.log(`${summary} @ ${quote.metadata.apiURL.bold}\n\t${'✘ FAIL'.red.bold} (${revertData})\n\t${composition}`);
+        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${result.revertData})\n\t${composition}`);
     }
 }
 
@@ -215,6 +225,7 @@ function normalizeSwapResult(result) {
         boughtAmount: result.boughtAmount,
         soldAmount: result.soldAmount,
         ethBalance: result.ethBalance,
+        protocolFeePaid: result.protocolFeePaid,
     };
 }
 
