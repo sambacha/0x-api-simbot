@@ -11,14 +11,12 @@ async function getSellQuote(opts) {
     const takerTokenAmount =
         toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
     const qs = [
-        // `toTokenSymbol=${makerToken === "ETH" ? "WETH" : makerToken}`,
         `toTokenSymbol=${makerToken}`,
         `fromTokenSymbol=${takerToken}`,
         `amount=${takerTokenAmount.toString(10)}`,
         `fromAddress=0xd00d00caca000000000000000000000000001337`,
         `slippage=1`,
-        `disableEstimate=true`,
-        `disabledExchangesList=PMM`
+        `disableEstimate=true`
     ].join('&');
     const url = `${apiPath}?${qs}`;
     try {
