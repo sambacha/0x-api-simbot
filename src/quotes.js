@@ -37,8 +37,13 @@ const transformerDeployer = createContractFromArtifact(
     CONFIG.transformers.deployer,
 );
 
+// Track the block number at which a quote is being filled.
+// A-B fills can reach into this cache to synchronize the blocks at which
+// they fill so they fill against the same state.
+const FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE = {};
+
 async function fillSellQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const { makerToken, takerToken, swapValue, apiPath, apiPathId, fillDelay, id } = opts;
     const quoteTime = Date.now();
     const takerTokenAmount =
         toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
@@ -59,7 +64,7 @@ async function fillSellQuote(opts) {
             id,
             makerToken,
             takerToken,
-            apiPath,
+            apiURL: apiPathId,
             side: 'sell',
             fillAmount: takerTokenAmount.toString(10),
             fillValue: swapValue,
@@ -78,7 +83,7 @@ async function fillSellQuote(opts) {
 }
 
 async function fillBuyQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const { makerToken, takerToken, swapValue, apiPath, apiPathId, fillDelay, id } = opts;
     const quoteTime = Date.now();
     const makerTokenAmount =
         toTokenAmount(makerToken, new BigNumber(swapValue).div(TOKENS[makerToken].value));
@@ -99,7 +104,7 @@ async function fillBuyQuote(opts) {
             id,
             makerToken,
             takerToken,
-            apiPath,
+            apiURL: apiPathId,
             side: 'buy',
             fillAmount: makerTokenAmount.toString(10),
             fillValue: swapValue,
@@ -134,6 +139,7 @@ function getBuyQuoteMaxSellAmount(quoteResult) {
 
 async function fillQuote(quote) {
     const {
+        id,
         side,
         makerToken,
         takerToken,
@@ -144,6 +150,11 @@ async function fillQuote(quote) {
     } = quote.metadata;
     const transformers = await getTransformersOverrides();
     const overrides = await getOverrides();
+    // Synchronize fill block numbers across quotes under the same id.
+    let blockNumber = FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE[id]
+        ? FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE[id]
+        : await eth.getBlockNumber();
+    FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE[id] = blockNumber;
     try {
         const result = normalizeSwapResult(await takerContract.fill({
             to: quote.to,
@@ -159,6 +170,7 @@ async function fillQuote(quote) {
             transformerDeployer: transformerDeployer.address,
             transformersDeployData: transformers.map(({deployData}) => deployData),
         }).call({
+            block: blockNumber,
             gas: 20e6,
             gasPrice: quote.gasPrice,
             value: quote.value,
@@ -246,9 +258,9 @@ function printFillSummary(quote, success, revertData) {
         composition = `${composition} (+ fallback)`;
     }
     if (success) {
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold}\n\t${composition}`);
+        console.log(`${summary} @ ${quote.metadata.apiURL.bold}\n\t${'✔ PASS'.green.bold}\n\t${composition}`);
     } else {
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${revertData})\n\t${composition}`);
+        console.log(`${summary} @ ${quote.metadata.apiURL.bold}\n\t${'✘ FAIL'.red.bold} (${revertData})\n\t${composition}`);
     }
 }
 

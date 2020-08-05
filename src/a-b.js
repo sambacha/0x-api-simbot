@@ -9,6 +9,7 @@ const {
     getRandomBracketValue,
     getRandomQuotePair,
     LogWriter,
+    parseURLSpec,
     randomHash,
     updateTokenPrices,
     writeEntry,
@@ -83,18 +84,21 @@ async function fillSellQuotes(urls, logs) {
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
-    const results = await Promise.all(urls.map(
-        apiPath => fillSellQuote({
+    const _urls = urls.map(u => parseURLSpec(u));
+    const results = await Promise.all(_urls.map(
+        url => fillSellQuote({
+            id,
             makerToken,
             takerToken,
-            apiPath,
             swapValue,
             fillDelay,
+            apiPath: url.url,
+            apiPathId: url.id,
         }),
     ));
     await Promise.all(
         results.filter(r => !!r).map((r, i) => logs.writeObject(
-            { ...r, metadata: { ...r.metadata, id, apiURL: urls[i] } },
+            { ...r, metadata: { ...r.metadata, id, apiURL: _urls[i].id } },
         )),
     );
 }
@@ -104,18 +108,19 @@ async function fillBuyQuotes(urls, logs) {
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
-    const results = await Promise.all(urls.map(
-        apiPath => fillBuyQuote({
+    const _urls = urls.map(u => parseURLSpec(u));
+    const results = await Promise.all(_urls.map(
+        url => fillBuyQuote({
+            id,
             makerToken,
             takerToken,
-            apiPath,
             swapValue,
             fillDelay,
+            apiPath: url.url,
+            apiPathId: url.id,
         }),
     ));
     await Promise.all(
-        results.filter(r => !!r).map((r, i) => logs.writeObject(
-            { ...r, metadata: { ...r.metadata, id, apiURL: urls[i] } },
-        )),
+        results.filter(r => !!r).map((r, i) => logs.writeObject(r)),
     );
 }

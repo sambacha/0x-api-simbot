@@ -155,6 +155,16 @@ function createConfigFile() {
     return CONFIG_TEMPLATE;
 }
 
+function parseURLSpec(raw) {
+    // URLs can be plain or specify an ID.
+    // E.g., 'ID=https://...'
+    const m = /(?:(.+)=)?([^/]+:\/\/.+)$/.exec(raw);
+    if (m[1]) {
+        return { id: m[1], url: m[2] };
+    }
+    return { id: m[2], url: m[2] };
+}
+
 module.exports = {
     randomAddress,
     randomHash,
@@ -162,9 +172,10 @@ module.exports = {
     delay,
     forever,
     getRandomBracketValue,
+    getRandomQuotePair,
     toTokenAmount,
     LogWriter,
-    getRandomQuotePair,
+    parseURLSpec,
     updateTokenPrices,
     loadConfig,
 }

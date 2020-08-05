@@ -4,7 +4,15 @@ const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
 const _ = require('lodash');
 
-const { forever, getRandomBracketValue, getRandomQuotePair, LogWriter, updateTokenPrices } = require('./utils');
+const {
+    forever,
+    getRandomBracketValue,
+    getRandomQuotePair,
+    LogWriter,
+    parseURLSpec,
+    randomHash,
+    updateTokenPrices,
+} = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
 const {
@@ -74,7 +82,9 @@ async function _fillSellQuote(logs) {
     const result = await fillSellQuote({
         makerToken,
         takerToken,
-        apiPath: ARGV.url,
+        id: randomHash(),
+        apiPath: parseURLSpec(ARGV.url).url,
+        apiPathId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
@@ -86,7 +96,9 @@ async function _fillBuyQuote(logs) {
     const result = await fillBuyQuote({
         makerToken,
         takerToken,
-        apiPath: ARGV.url,
+        id: randomHash(),
+        apiPath: parseURLSpec(ARGV.url).url,
+        apiPathId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
