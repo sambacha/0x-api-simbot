@@ -17,7 +17,8 @@ async function getSellQuote(opts) {
         `amount=${takerTokenAmount.toString(10)}`,
         `fromAddress=0xd00d00caca000000000000000000000000001337`,
         `slippage=1`,
-        `disableEstimate=true`
+        `disableEstimate=true`,
+        `disabledExchangesList=PMM`
     ].join('&');
     const url = `${apiPath}?${qs}`;
     try {
@@ -38,8 +39,7 @@ async function getSellQuote(opts) {
                 quoteResult.fromTokenAmount
             ),
             // Filter out unused sources.
-            // sources: quoteResult.sources.filter(s => s.proportion !== '0'),
-            sources: [],
+            sources: quoteResult.exchanges.map(s => ({ name: s.name, proportion: `${s.part}` })).filter(s => s.proportion !== '0'),
             metadata: {
                 id,
                 makerToken,

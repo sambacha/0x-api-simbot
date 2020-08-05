@@ -39,9 +39,7 @@ const ARGV = yargs
         alias: 't',
         type: 'array',
         choices: Object.keys(TOKENS),
-        // default: ['WETH', 'WBTC', 'DAI', 'USDC'],
-        // default: ['DAI', 'USDC'],
-        default: ['ETH', 'DAI', 'USDC'],
+        default: ['WETH', 'WBTC', 'DAI', 'USDC'],
         describe: 'token to use in quotes (can be repeated)'
     })
     .option('v0', {

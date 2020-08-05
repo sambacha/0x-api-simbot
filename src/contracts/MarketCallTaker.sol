@@ -18,6 +18,7 @@ contract MarketCallTaker {
 
     IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address private constant ZEROEX_PROTOCOL_FEE_COLLECTOR = 0xa26e80e7Dea86279c6d778D702Cc413E6CFfA777;
 
     struct FillParams {
         address payable to;
@@ -43,6 +44,7 @@ contract MarketCallTaker {
         uint256 gasStart;
         uint256 gasEnd;
         uint256 ethBalance;
+        uint256 protocolFeePaid;
     }
 
     using LibERC20Token for IERC20;
@@ -54,6 +56,7 @@ contract MarketCallTaker {
     {
         IAllowance(0x22F9dCF4647084d6C31b2765F6910cd85C178C18).setAllowances();
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
+        uint256 feeCollectorBalanceBefore = _protocolFeeCollectorBalance();
 
         swapResult.blockNumber = uint32(block.number);
 
@@ -80,6 +83,7 @@ contract MarketCallTaker {
         (bool success, bytes memory callResult) =
             params.to.call{value: msg.value}(params.data);
         swapResult.gasEnd = gasleft();
+        swapResult.protocolFeePaid = _protocolFeeCollectorBalance() - feeCollectorBalanceBefore;
 
         if (!success) {
             swapResult.revertData = callResult;
@@ -125,4 +129,14 @@ contract MarketCallTaker {
         bytes calldata data,
         bytes calldata operatorData
     ) external {}
+
+    function _protocolFeeCollectorBalance()
+        private
+        view
+        returns (uint256 balance)
+    {
+        balance = WETH.balanceOf(ZEROEX_PROTOCOL_FEE_COLLECTOR);
+        balance += ZEROEX_PROTOCOL_FEE_COLLECTOR.balance;
+        return balance;
+    }
 }

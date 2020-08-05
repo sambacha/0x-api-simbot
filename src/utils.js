@@ -54,8 +54,8 @@ function forever(cb) {
 }
 
 function getRandomBracketValue(stops) {
-    const i = _.random(0, stops.length - 1);
-    const min = i == 0 ? 0 : stops[i - 1];
+    const i = _.random(1, stops.length - 1);
+    const min = stops[0];
     const max = stops[i];
     return ((max - min) * Math.random()) + min;
 }
@@ -121,7 +121,6 @@ function getRandomQuotePair(tokens, opts = {}) {
 
 async function updateTokenPrices() {
     console.info('Updating token prices from coingecko...');
-    const symbols = Object.keys(TOKENS);
     const cgQueryParams = [
         `ids=${Object.values(TOKENS).map(i => i.cgId).join(',')}`,
         `vs_currencies=usd`,
