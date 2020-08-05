@@ -54,9 +54,9 @@ function forever(cb) {
 }
 
 function getRandomBracketValue(stops) {
-    const i = _.random(0, stops.length - 1);
-    const min = i == 0 ? 0 : stops[i - 1];
-    const max = stops[i];
+    const i = _.random(0, stops.length - 2);
+    const min = stops[i];
+    const max = stops[i + 1];
     return ((max - min) * Math.random()) + min;
 }
 

@@ -78,7 +78,7 @@ urls = sorted(list(list(count_by_stop_by_url.values())[0].keys()))
 prev_ys = [0 for d in stops]
 xs = list(range(len(stops)))
 for url in urls:
-    ys = [count_by_stop_by_url[stop][url] / totals_by_stop[stop] for stop in stops]
+    ys = [count_by_stop_by_url[stop].get(url, 0) / totals_by_stop[stop] for stop in stops]
     widths = [max(totals_by_stop[stop] / max_total, 0.025) for stop in stops]
     plt.bar(xs, ys, bottom=prev_ys, label=url, width=widths)
     prev_ys = [py + y for py, y in zip(prev_ys, ys)]
