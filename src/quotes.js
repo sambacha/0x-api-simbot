@@ -134,12 +134,16 @@ async function fillQuote(quote) {
         let protocolFeeUsd = new BigNumber(result.protocolFeePaid).times(1e-18).times(TOKENS['ETH'].value);
         let costUsd = gasUsedUsd.plus(protocolFeeUsd);
         let adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
-        result = { ...result, adjustedBoughtAmountUsd, costUsd, }
+        result = { ...result, success, adjustedBoughtAmountUsd, costUsd }
         printFillSummary(quote, success, result);
         return {
             ...quote,
             metadata: {
                 ...quote.metadata,
+                ethUsd: new BigNumber(TOKENS['ETH'].value),
+                makerTokenUsd: new BigNumber(TOKENS[makerToken].value),
+                makerTokenDecimals: TOKENS[makerToken].decimals,
+                takerTokenDecimals: TOKENS[takerToken].decimals,
                 swapResult: result,
             },
         };

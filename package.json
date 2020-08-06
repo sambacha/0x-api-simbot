@@ -16,8 +16,10 @@
         "flex-ether": "^1.7.1",
         "lodash": "^4.17.19",
         "node-fetch": "^2.6.0",
+        "pg": "^8.3.0",
         "solc": "^0.6.10",
         "soluble": "^1.0.4",
+        "typeorm": "^0.2.25",
         "web3-eth-abi": "^1.2.6",
         "web3-providers-ipc": "^1.2.6",
         "yargs": "^15.1.0"

@@ -48,8 +48,11 @@ async function delay(cb, delay) {
 
 function forever(cb, delay = 0) {
     const repeater = async () => {
-        await cb();
-        setTimeout(repeater, delay);
+        try {
+            await cb();
+        } finally {
+            setTimeout(repeater, delay);
+        }
     };
     repeater();
 }
