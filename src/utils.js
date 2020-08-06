@@ -9,8 +9,9 @@ const _ = require('lodash');
 const TOKENS = require('./tokens');
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
 const CONFIG_TEMPLATE = {
-    erc20Proxy: "0x95e6f48254609a6ee006f7d493c8e5fb97094cef",
-    exchange: "0x61935cbdd02287b511119ddb11aeb42f1593b7ef",
+    gst: '0x0000000000b3F879cb30FE243b4Dfee438691c04',
+    erc20Proxy: '0x95e6f48254609a6ee006f7d493c8e5fb97094cef',
+    exchange: '0x61935cbdd02287b511119ddb11aeb42f1593b7ef',
     forwarder: '0x6958f5e95332d93d21af0d7b9ca85b8212fee0a5',
     taker: '0xd00d00caca000000000000000000000000001337',
     transformers: {

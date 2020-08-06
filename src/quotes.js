@@ -9,7 +9,13 @@ const path = require('path');
 const _ = require('lodash');
 const ethjs = require('ethereumjs-util');
 
-const { delay, loadConfig, randomAddress, toHex, toTokenAmount } = require('./utils');
+const {
+    delay,
+    loadConfig,
+    randomAddress,
+    toHex,
+    toTokenAmount,
+} = require('./utils');
 const {
     eth,
     loadArtifact,
@@ -19,7 +25,6 @@ const {
 const TOKENS = require('./tokens');
 const CONFIG = loadConfig();
 
-const GST_ADDRESS = '0x0000000000b3F879cb30FE243b4Dfee438691c04';
 const ERC20_PROXY = CONFIG.erc20Proxy;
 const EXCHANGE = CONFIG.exchange;
 const ARTIFACTS = {
@@ -72,6 +77,9 @@ async function fillSellQuote(opts) {
             responseTime: (Date.now() - quoteTime) / 1000,
             fillDelay: fillDelay,
             maxSellAmount: quoteResult.sellAmount,
+            ethPrice: TOKENS['ETH'].price,
+            sellTokenPrice: TOKENS[takerToken].price,
+            buyTokenPrice: TOKENS[makerToken].price,
         }
     };
     if (quote.data) {
@@ -112,6 +120,9 @@ async function fillBuyQuote(opts) {
             responseTime: (Date.now() - quoteTime) / 1000,
             fillDelay: fillDelay,
             maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
+            ethPrice: TOKENS['ETH'].price,
+            sellTokenPrice: TOKENS[takerToken].price,
+            buyTokenPrice: TOKENS[makerToken].price,
         }
     };
     if (quote.data) {
@@ -178,7 +189,7 @@ async function fillQuote(quote) {
             overrides: {
                 [takerContract.address]: { code: ARTIFACTS.MarketCallTaker.deployedBytecode },
                 [TOKENS[takerToken].wallet]: { code: ARTIFACTS.HackedWallet.deployedBytecode },
-                [GST_ADDRESS]: { code: ARTIFACTS.NoGST.deployedBytecode },
+                [config.gst]: { code: ARTIFACTS.NoGST.deployedBytecode },
                 ...(transformers.length > 0
                     ? {
                         [transformerDeployer.address]: {

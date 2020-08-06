@@ -88,5 +88,6 @@ plt.xticks(xs, [f'{stop}bps+ ({totals_by_stop[stop]})' for stop in stops])
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%d%%' % (y * 100)))
 plt.xlabel('winner\'s edge')
 plt.ylabel('win rate')
-plt.title(f'A-B realized fill win rate by edge ({sum(totals_by_stop.values())}/{len(data)} unequal swaps)')
+swap_type = 'buys' if args.buys else 'sells' if args.sells else 'swaps'
+plt.title(f'A-B realized fill win rate by edge ({sum(totals_by_stop.values())}/{len(data)} unequal {swap_type})')
 plt.show()
