@@ -11,6 +11,7 @@ const {
     parseURLSpec,
     randomHash,
     updateTokenPrices,
+    randomMoniker,
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
@@ -62,7 +63,7 @@ const ARGV = yargs
         describe: 'URI to the database to upload to',
     }).argv;
 
-const runId = randomHash();
+const runId = randomMoniker();
 let dbConnection;
 
 (async () => {
@@ -74,15 +75,16 @@ let dbConnection;
     }
     console.log(`Simulation run ` + `${runId}`.yellow);
     console.log(`Tokens: ${ARGV.token}`);
-    const logs = new LogWriter(ARGV.output);
-    if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, () => forever(() => fillSellQuotes(ARGV.url, logs)));
-    }
-    if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, () => forever(() => fillBuyQuotes(ARGV.url, logs)));
-    }
+
     // Keep token prices up to date for long running tests
     forever(() => updateTokenPrices(), 300000);
+    const logs = new LogWriter(ARGV.output);
+    if (ARGV.sells || !ARGV.buys) {
+        _.times(ARGV.jobs, i => forever(() => fillSellQuotes(ARGV.url, logs), 1000, i * 1000));
+    }
+    if (ARGV.buys || !ARGV.sells) {
+        _.times(ARGV.jobs, i => forever(() => fillBuyQuotes(ARGV.url, logs), 1000, i * 1000));
+    }
 })();
 
 async function fillSellQuotes(urls, logs) {
@@ -102,7 +104,7 @@ async function fillSellQuotes(urls, logs) {
                 swapValue,
                 fillDelay,
                 apiPath: url.url,
-                apiPathId: url.id,
+                apiId: url.id,
             })
         )
     );
@@ -147,7 +149,7 @@ async function fillBuyQuotes(urls, logs) {
                 swapValue,
                 fillDelay,
                 apiPath: url.url,
-                apiPathId: url.id,
+                apiId: url.id,
             })
         )
     );

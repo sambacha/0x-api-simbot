@@ -1,5 +1,8 @@
 import json
 
+def get_swap_url(swap):
+    return swap['metadata'].get('api', None) or swap['metadata'].get('apiURL')
+
 def load_ab_data(path):
     swaps = []
     with open(path) as f:
@@ -12,7 +15,7 @@ def load_ab_data(path):
     swaps_by_id_by_url = {}
     for swap in swaps:
         id = swap['metadata']['id']
-        url = swap['metadata']['apiURL']
+        url = get_swap_url(swap)
         swaps_by_id_by_url[id] = swaps_by_id_by_url.get(id, {})
         swaps_by_id_by_url[id][url] = swap
     return list(swaps_by_id_by_url.values())
@@ -20,10 +23,11 @@ def load_ab_data(path):
 def rewrite_urls(swaps):
     urls = set()
     for swap in swaps:
-        urls.add(swap['metadata']['apiURL'])
+        urls.add(get_swap_url(swap))
     prefix = find_common_prefix(list(urls))
-    for swap in swaps:
-        swap['metadata']['apiURL'] = swap['metadata']['apiURL'][len(prefix):]
+    if len(prefix):
+        for swap in swaps:
+            swap['metadata']['apiId'] = get_swap_url(swap)[len(prefix):]
     return swaps
 
 def find_common_prefix(urls):

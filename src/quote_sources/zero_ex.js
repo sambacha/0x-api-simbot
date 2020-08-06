@@ -1,7 +1,7 @@
 const BigNumber = require('bignumber.js');
 const fetch = require('node-fetch');
 const ethjs = require('ethereumjs-util');
-const { toTokenAmount } = require('../utils');
+const { toTokenWeis } = require('../utils');
 const TOKENS = require('../tokens');
 
 function getBuyQuoteMaxSellAmount(quoteResult) {
@@ -20,10 +20,10 @@ function getBuyQuoteMaxSellAmount(quoteResult) {
 }
 
 async function getSellQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const { makerToken, takerToken, swapValue, apiPath, apiId, fillDelay, id } = opts;
     const quoteTime = Date.now();
     const takerTokenAmount =
-        toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
+        toTokenWeis(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
     const qs = [
         ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
         `buyToken=${makerToken}`,
@@ -34,7 +34,7 @@ async function getSellQuote(opts) {
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
-            console.log(await resp.text());
+            console.log(`${apiId} says`, await resp.text());
             return undefined;
         }
         const quoteResult = await resp.json();
@@ -46,7 +46,8 @@ async function getSellQuote(opts) {
                 id,
                 makerToken,
                 takerToken,
-                apiURL: apiPathId,
+                apiPath,
+                api: apiId,
                 side: 'sell',
                 fillAmount: takerTokenAmount.toString(10),
                 fillValue: swapValue,
@@ -54,9 +55,9 @@ async function getSellQuote(opts) {
                 responseTime: (Date.now() - quoteTime) / 1000,
                 fillDelay: fillDelay,
                 maxSellAmount: quoteResult.sellAmount,
-                ethPrice: TOKENS['ETH'].price,
-                sellTokenPrice: TOKENS[takerToken].price,
-                buyTokenPrice: TOKENS[makerToken].price,
+                ethPrice: TOKENS['ETH'].value,
+                sellTokenPrice: TOKENS[takerToken].value,
+                buyTokenPrice: TOKENS[makerToken].value,
             }
         };
         return quote;
@@ -67,10 +68,10 @@ async function getSellQuote(opts) {
 }
 
 async function getBuyQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const { makerToken, takerToken, swapValue, apiPath, apiId, fillDelay, id } = opts;
     const quoteTime = Date.now();
     const makerTokenAmount =
-        toTokenAmount(makerToken, new BigNumber(swapValue).div(TOKENS[makerToken].value));
+        toTokenWeis(makerToken, new BigNumber(swapValue).div(TOKENS[makerToken].value));
     const qs = [
         ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
         `buyToken=${makerToken}`,
@@ -81,7 +82,7 @@ async function getBuyQuote(opts) {
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
-            console.log(await resp.text());
+            console.log(`${apiId} says`, await resp.text());
             return undefined;
         }
         const quoteResult = await resp.json();
@@ -93,7 +94,8 @@ async function getBuyQuote(opts) {
                 id,
                 makerToken,
                 takerToken,
-                apiURL: apiPathId,
+                apiPath,
+                api: apiId,
                 side: 'buy',
                 fillAmount: makerTokenAmount.toString(10),
                 fillValue: swapValue,
@@ -106,11 +108,11 @@ async function getBuyQuote(opts) {
                 buyTokenPrice: TOKENS[makerToken].price,
             }
         };
+        return quote;
     } catch (e) {
         console.log(e);
         return undefined;
     }
-    return quote;
 }
 
 module.exports = {

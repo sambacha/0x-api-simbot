@@ -1,28 +1,31 @@
 const BigNumber = require('bignumber.js');
 const fetch = require('node-fetch');
-const { toTokenAmount } = require('../utils');
+const { loadConfig, toTokenWeis } = require('../utils');
 const TOKENS = require('../tokens');
 
+const CONFIG = loadConfig();
 const ALLOWANCE_TARGET = '0xe4c9194962532feb467dce8b3d42419641c6ed2e';
 
 async function getSellQuote(opts) {
-    const { makerToken, takerToken, swapValue, apiPath, fillDelay, id } = opts;
+    const { makerToken, takerToken, swapValue, apiPath, apiId, fillDelay, id } = opts;
     const quoteTime = Date.now();
     const takerTokenAmount =
-        toTokenAmount(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
+        toTokenWeis(takerToken, new BigNumber(swapValue).div(TOKENS[takerToken].value));
     const qs = [
+        ...(/(?:\?(.+))?$/.exec(apiPath)[1] || '').split('&'),
         `toTokenSymbol=${makerToken}`,
         `fromTokenSymbol=${takerToken}`,
         `amount=${takerTokenAmount.toString(10)}`,
-        `fromAddress=0xd00d00caca000000000000000000000000001337`,
+        `fromAddress=${CONFIG.taker}`,
         `slippage=1`,
         `disableEstimate=true`
     ].join('&');
     const url = `${apiPath}?${qs}`;
+    console.log(url);
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
-            console.log(await resp.text());
+            console.log(`${apiId} says:`, await resp.text());
             return undefined;
         }
         const quoteResult = await resp.json();
@@ -43,6 +46,7 @@ async function getSellQuote(opts) {
                 makerToken,
                 takerToken,
                 apiPath,
+                api: apiId,
                 side: 'sell',
                 fillAmount: takerTokenAmount.toString(10),
                 fillValue: swapValue,
@@ -50,6 +54,9 @@ async function getSellQuote(opts) {
                 responseTime: (Date.now() - quoteTime) / 1000,
                 fillDelay: fillDelay,
                 maxSellAmount: takerTokenAmount,
+                ethPrice: TOKENS['ETH'].value,
+                sellTokenPrice: TOKENS[takerToken].value,
+                buyTokenPrice: TOKENS[makerToken].value,
             }
         };
         return quote;

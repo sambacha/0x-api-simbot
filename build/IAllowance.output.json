@@ -1,0 +1,13 @@
+{
+	"abi": [
+		{
+			"inputs": [],
+			"name": "setAllowances",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	],
+	"bytecode": "",
+	"deployedBytecode": ""
+}

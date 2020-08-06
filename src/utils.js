@@ -5,6 +5,7 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const path = require('path');
 const _ = require('lodash');
+const moniker = require('moniker');
 
 const TOKENS = require('./tokens');
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
@@ -43,15 +44,15 @@ async function delay(cb, delay) {
     });
 }
 
-function forever(cb, delay = 0) {
+function forever(cb, interval = 0, initialDelay = 0) {
     const repeater = async () => {
         try {
             await cb();
         } finally {
-            setTimeout(repeater, delay);
+            setTimeout(repeater, interval);
         }
     };
-    repeater();
+    return delay(() => repeater(), initialDelay);
 }
 
 function getRandomBracketValue(stops) {
@@ -61,9 +62,14 @@ function getRandomBracketValue(stops) {
     return (max - min) * Math.random() + min;
 }
 
-function toTokenAmount(token, units) {
+function toTokenWeis(token, units) {
     const base = new BigNumber(10).pow(TOKENS[token].decimals);
-    return units.times(base).integerValue();
+    return new BigNumber(units).times(base).integerValue();
+}
+
+function fromTokenWeis(token, weis) {
+    const base = new BigNumber(10).pow(TOKENS[token].decimals);
+    return new BigNumber(weis).div(base);
 }
 
 class LogWriter {
@@ -171,6 +177,10 @@ function parseURLSpec(raw) {
     return { id: m[2], url: m[2] };
 }
 
+function randomMoniker() {
+    return moniker.generator([moniker.verb, moniker.adjective, moniker.noun]).choose();
+}
+
 module.exports = {
     randomAddress,
     randomHash,
@@ -179,9 +189,11 @@ module.exports = {
     forever,
     getRandomBracketValue,
     getRandomQuotePair,
-    toTokenAmount,
+    toTokenWeis,
+    fromTokenWeis,
     LogWriter,
     parseURLSpec,
     updateTokenPrices,
     loadConfig,
+    randomMoniker,
 };

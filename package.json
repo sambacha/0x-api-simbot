@@ -6,8 +6,8 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "start": "yarn build-contracts && node ./src/index.js",
-        "start-ab": "yarn build-contracts && node ./src/a-b.js",
+        "start": "node ./src/index.js",
+        "start-ab": "node ./src/a-b.js",
         "build-contracts": "soluble compile -O ./build ./src/contracts/**.sol",
         "prettier": "prettier --write src/**.js"
     },
@@ -16,6 +16,7 @@
         "flex-contract": "^2.2.2",
         "flex-ether": "^1.7.1",
         "lodash": "^4.17.19",
+        "moniker": "^0.1.2",
         "node-fetch": "^2.6.0",
         "pg": "^8.3.0",
         "solc": "0.6.12",

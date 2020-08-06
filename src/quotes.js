@@ -16,7 +16,7 @@ const {
     loadConfig,
     randomAddress,
     toHex,
-    toTokenAmount,
+    fromTokenWeis,
 } = require('./utils');
 const {
     eth,
@@ -65,7 +65,7 @@ async function fillSellQuote(opts) {
 }
 
 async function fillBuyQuote(opts) {
-    const quote = await zeroEx.getSellQuote(opts);
+    const quote = await zeroEx.getBuyQuote(opts);
     if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
@@ -91,8 +91,8 @@ async function fillQuote(quote) {
                     makerToken: TOKENS[makerToken].address,
                     takerToken: TOKENS[takerToken].address,
                     wallet: TOKENS[takerToken].wallet,
-                    spender: quote.allowanceTarget || CONFIG.ERC20_PROXY,
-                    exchange: CONFIG.EXCHANGE,
+                    spender: quote.allowanceTarget || CONFIG.erc20Proxy,
+                    exchange: CONFIG.exchange,
                     data: quote.data,
                     orders: quote.orders,
                     protocolFeeAmount: quote.protocolFee,
@@ -115,7 +115,7 @@ async function fillQuote(quote) {
                         [TOKENS[takerToken].wallet]: {
                             code: ARTIFACTS.HackedWallet.deployedBytecode,
                         },
-                        [config.gst]: {
+                        [CONFIG.gst]: {
                             code: ARTIFACTS.NoGST.deployedBytecode,
                         },
                         ...(transformers.length > 0
@@ -143,23 +143,39 @@ async function fillQuote(quote) {
                     },
                 })
         );
-        let success =
+        const success =
             result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gt(0);
-        const gasUsed = result.gasUsed.plus(quote.data.times(16));
-        let boughtAmountUsd = new BigNumber(result.boughtAmount)
-            .div(10 ** TOKENS[makerToken].decimals)
+        const txDataGasUsed = quote.data.length * 16;
+        const gasUsed = result.gasUsed + txDataGasUsed;
+        const boughtAmountUsd = fromTokenWeis(makerToken, result.boughtAmount)
             .times(TOKENS[makerToken].value);
-        let gasUsedUsd = new BigNumber(gasUsed)
-            .times(quote.gasPrice)
-            .times(1e-18)
-            .times(TOKENS['ETH'].value);
-        let protocolFeeUsd = new BigNumber(result.protocolFeePaid)
-            .times(1e-18)
-            .times(TOKENS['ETH'].value);
-        let costUsd = gasUsedUsd.plus(protocolFeeUsd);
-        let adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
-        result = { ...result, success, adjustedBoughtAmountUsd, costUsd, gasUsed };
+        const soldAmountUsd = fromTokenWeis(takerToken, result.soldAmount)
+            .times(TOKENS[makerToken].value);
+        const gasUsedUsd = fromTokenWeis(
+                'ETH',
+                new BigNumber(gasUsed).times(quote.gasPrice),
+            ).times(TOKENS['ETH'].value);
+        const protocolFeeUsd = fromTokenWeis(
+                'ETH',
+                new BigNumber(result.protocolFeePaid),
+            ).times(TOKENS['ETH'].value);
+        const costUsd = gasUsedUsd.plus(protocolFeeUsd);
+        const adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
+        const adjustedSoldAmountUsd = soldAmountUsd.plus(costUsd);
+        result = {
+            ...result,
+            success,
+            soldAmountUsd,
+            boughtAmountUsd,
+            protocolFeeUsd,
+            gasUsedUsd,
+            adjustedBoughtAmountUsd,
+            adjustedSoldAmountUsd,
+            costUsd,
+            gasUsed,
+            txDataGasUsed,
+        };
         printFillSummary(quote, success, result);
         return {
             ...quote,
@@ -245,19 +261,23 @@ function printFillSummary(quote, success, result) {
             .div(10 ** TOKENS[makerToken].decimals)
             .toFixed(2);
         let gasUsed = new BigNumber(result.gasUsed);
-        let usdDisplay = `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${
-            result.costUsd.toFixed(2).red
-        })`;
-        console.log(
-            `${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold} ${
+        let usdDisplay = side === 'sell'
+            ? `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${
+                result.costUsd.toFixed(2).red
+            })`
+            : `($${result.adjustedSoldAmountUsd.toFixed(2)}) ($${
+                result.costUsd.toFixed(2).red
+            })`
+        console.info(
+            `${summary} @ ${quote.metadata.api.bold}\n\t${'✔ PASS'.green.bold} ${
                 soldAmount.yellow
             } -> ${
                 boughtAmount.yellow
-            } ${usdDisplay}\n\t${composition} ${gasUsed}`
+            } ${usdDisplay}\n\t${composition}\n\tgas: ${gasUsed.toString(10).red}`
         );
     } else {
-        console.log(
-            `${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${
+        console.info(
+            `${summary} @ ${quote.metadata.api.bold}\n\t${'✘ FAIL'.red.bold} (${
                 result.revertData
             })\n\t${composition}`
         );

@@ -188,7 +188,7 @@ const parseResult = (result) => {
         id: simId,
         makerToken,
         takerToken,
-        apiPath: url,
+        api: url,
         side,
         responseTime,
         ethUsd,

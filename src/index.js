@@ -63,13 +63,14 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
-    await updateTokenPrices();
+    // Keep token prices up to date for long running tests
+    forever(() => updateTokenPrices(), 300000);
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, () => forever(() => _fillSellQuote(logs)));
+        _.times(ARGV.jobs, i => forever(() => _fillSellQuote(logs, 1000, i * 1000)));
     }
     if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, () => forever(() => _fillBuyQuote(logs)));
+        _.times(ARGV.jobs, i => forever(() => _fillBuyQuote(logs), 1000, i * 1000));
     }
 })();
 
@@ -82,7 +83,7 @@ async function _fillSellQuote(logs) {
         takerToken,
         id: randomHash(),
         apiPath: parseURLSpec(ARGV.url).url,
-        apiPathId: parseURLSpec(ARGV.url).id,
+        apiId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
@@ -98,7 +99,7 @@ async function _fillBuyQuote(logs) {
         takerToken,
         id: randomHash(),
         apiPath: parseURLSpec(ARGV.url).url,
-        apiPathId: parseURLSpec(ARGV.url).id,
+        apiId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
