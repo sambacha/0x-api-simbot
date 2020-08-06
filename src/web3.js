@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 const fs = require('fs');
 const path = require('path');
 const ethjs = require('ethereumjs-util');
@@ -15,8 +15,9 @@ function loadArtifact(artifactPath) {
     if (artifactCache[artifactPath]) {
         return artifactCache[artifactPath];
     }
-    return artifactCache[artifactPath] =
-        standardizeArtifact(JSON.parse(fs.readFileSync(artifactPath)));
+    return (artifactCache[artifactPath] = standardizeArtifact(
+        JSON.parse(fs.readFileSync(artifactPath))
+    ));
 }
 
 function standardizeArtifact(artifact) {
@@ -25,7 +26,8 @@ function standardizeArtifact(artifact) {
         return {
             abi: artifact.compilerOutput.abi,
             bytecode: artifact.compilerOutput.evm.bytecode.object,
-            deployedBytecode: artifact.compilerOutput.evm.deployedBytecode.object,
+            deployedBytecode:
+                artifact.compilerOutput.evm.deployedBytecode.object,
         };
     }
     // soluble artifact.
@@ -37,12 +39,18 @@ function standardizeArtifact(artifact) {
 }
 
 function createContractFromArtifact(artifact, address) {
-    return new FlexContract(artifact.abi, address, { eth, bytecode: artifact.bytecode });
+    return new FlexContract(artifact.abi, address, {
+        eth,
+        bytecode: artifact.bytecode,
+    });
 }
 
 function createContractFromArtifactPath(artifactPath, address) {
     const artifact = loadArtifact(artifactPath);
-    return new FlexContract(artifact.abi, address, { eth, bytecode: artifact.bytecode });
+    return new FlexContract(artifact.abi, address, {
+        eth,
+        bytecode: artifact.bytecode,
+    });
 }
 
 module.exports = {

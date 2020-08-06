@@ -92,21 +92,23 @@ async function fillSellQuotes(urls, logs) {
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
-    const _urls = urls.map(u => parseURLSpec(u));
-    const results = await Promise.all(_urls.map(
-        url => fillSellQuote({
-            id,
-            makerToken,
-            takerToken,
-            swapValue,
-            fillDelay,
-            apiPath: url.url,
-            apiPathId: url.id,
-        }),
-    ));
+    const _urls = urls.map((u) => parseURLSpec(u));
+    const results = await Promise.all(
+        _urls.map((url) =>
+            fillSellQuote({
+                id,
+                makerToken,
+                takerToken,
+                swapValue,
+                fillDelay,
+                apiPath: url.url,
+                apiPathId: url.id,
+            })
+        )
+    );
     await Promise.all(
         results
-            .filter(r => !!r)
+            .filter((r) => !!r)
             .map((r, i) => {
                 const normalizedResult = {
                     ...r,
@@ -116,12 +118,15 @@ async function fillSellQuotes(urls, logs) {
                 if (dbConnection) {
                     persistPromises.push(
                         // Hack convert BigNumbers to strings for persistence
-                        saveResultAsync(dbConnection, JSON.parse(JSON.stringify(normalizedResult)))
+                        saveResultAsync(
+                            dbConnection,
+                            JSON.parse(JSON.stringify(normalizedResult))
+                        )
                     );
                 }
                 persistPromises.push(logs.writeObject(normalizedResult));
                 return Promise.all(persistPromises);
-            }),
+            })
     );
 }
 
@@ -132,22 +137,24 @@ async function fillBuyQuotes(urls, logs) {
     const id = randomHash();
     const swapValue = getRandomBracketValue(FILL_STOPS);
     const fillDelay = getRandomBracketValue(DELAY_STOPS);
-    const _urls = urls.map(u => parseURLSpec(u));
-    const results = await Promise.all(_urls.map(
-        url => fillBuyQuote({
-            id,
-            makerToken,
-            takerToken,
-            swapValue,
-            fillDelay,
-            apiPath: url.url,
-            apiPathId: url.id,
-        }),
-    ));
+    const _urls = urls.map((u) => parseURLSpec(u));
+    const results = await Promise.all(
+        _urls.map((url) =>
+            fillBuyQuote({
+                id,
+                makerToken,
+                takerToken,
+                swapValue,
+                fillDelay,
+                apiPath: url.url,
+                apiPathId: url.id,
+            })
+        )
+    );
     await Promise.all(
         results
             .filter((r) => !!r)
-            .map((r, i) =>
+            .map((r, i) => {
                 const normalizedResult = {
                     ...r,
                     metadata: { ...r.metadata, runId },
@@ -156,11 +163,14 @@ async function fillBuyQuotes(urls, logs) {
                 if (dbConnection) {
                     persistPromises.push(
                         // Hack convert BigNumbers to strings for persistence
-                        saveResultAsync(dbConnection, JSON.parse(JSON.stringify(normalizedResult)))
+                        saveResultAsync(
+                            dbConnection,
+                            JSON.parse(JSON.stringify(normalizedResult))
+                        )
                     );
                 }
                 persistPromises.push(logs.writeObject(normalizedResult));
                 return Promise.all(persistPromises);
-            ),
+            })
     );
 }

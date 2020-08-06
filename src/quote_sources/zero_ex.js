@@ -4,18 +4,6 @@ const ethjs = require('ethereumjs-util');
 const { toTokenAmount } = require('../utils');
 const TOKENS = require('../tokens');
 
-const EXCLUDED_SOURCES = [
-    // '0x',
-    // 'Curve',
-    // 'Uniswap',
-    // 'Uniswap_V2',
-    // 'Kyber',
-    // 'Eth2Dai',
-    // 'Balancer',
-    // 'MultiBridge',
-    // 'LiquidityProvider',
-]
-
 function getBuyQuoteMaxSellAmount(quoteResult) {
     const selector = quoteResult.data.slice(0, 10);;
     if (selector === '0x415565b0') {
@@ -41,7 +29,6 @@ async function getSellQuote(opts) {
         `buyToken=${makerToken}`,
         `sellToken=${takerToken}`,
         `sellAmount=${takerTokenAmount.toString(10)}`,
-        `excludedSources=${EXCLUDED_SOURCES.join(',')}`
     ].join('&');
     const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
     try {
@@ -59,7 +46,7 @@ async function getSellQuote(opts) {
                 id,
                 makerToken,
                 takerToken,
-                apiPath,
+                apiURL: apiPathId,
                 side: 'sell',
                 fillAmount: takerTokenAmount.toString(10),
                 fillValue: swapValue,
@@ -67,6 +54,9 @@ async function getSellQuote(opts) {
                 responseTime: (Date.now() - quoteTime) / 1000,
                 fillDelay: fillDelay,
                 maxSellAmount: quoteResult.sellAmount,
+                ethPrice: TOKENS['ETH'].price,
+                sellTokenPrice: TOKENS[takerToken].price,
+                buyTokenPrice: TOKENS[makerToken].price,
             }
         };
         return quote;
@@ -86,7 +76,6 @@ async function getBuyQuote(opts) {
         `buyToken=${makerToken}`,
         `sellToken=${takerToken}`,
         `buyAmount=${makerTokenAmount.toString(10)}`,
-        `excludedSources=${EXCLUDED_SOURCES.join(',')}`
     ].join('&');
     const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
     try {
@@ -104,7 +93,7 @@ async function getBuyQuote(opts) {
                 id,
                 makerToken,
                 takerToken,
-                apiPath,
+                apiURL: apiPathId,
                 side: 'buy',
                 fillAmount: makerTokenAmount.toString(10),
                 fillValue: swapValue,
@@ -112,6 +101,9 @@ async function getBuyQuote(opts) {
                 responseTime: (Date.now() - quoteTime) / 1000,
                 fillDelay: fillDelay,
                 maxSellAmount: getBuyQuoteMaxSellAmount(quoteResult),
+                ethPrice: TOKENS['ETH'].price,
+                sellTokenPrice: TOKENS[takerToken].price,
+                buyTokenPrice: TOKENS[makerToken].price,
             }
         };
     } catch (e) {

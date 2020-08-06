@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 require('colors');
 const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
@@ -15,11 +15,7 @@ const {
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
-const {
-    DELAY_STOPS,
-    FILL_STOPS,
-    LIVE_API_PATH,
-} = require('./constants');
+const { DELAY_STOPS, FILL_STOPS, LIVE_API_PATH } = require('./constants');
 
 const ARGV = yargs
     .option('output', {
@@ -32,7 +28,7 @@ const ARGV = yargs
         type: 'string',
         demandOption: true,
         default: LIVE_API_PATH,
-        describe: 'swap/quote endpoint URL'
+        describe: 'swap/quote endpoint URL',
     })
     .option('token', {
         alias: 't',
@@ -40,7 +36,7 @@ const ARGV = yargs
         choices: Object.keys(TOKENS),
         default: ['WETH', 'DAI'],
         // default: ['USDC', 'DAI'],
-        describe: 'token to use in quotes (can be repeated)'
+        describe: 'token to use in quotes (can be repeated)',
     })
     .option('v0', {
         type: 'boolean',
@@ -60,9 +56,8 @@ const ARGV = yargs
         alias: 'j',
         type: 'number',
         default: 8,
-        describe: 'number of jobs/quotes to run in parallel'
-    })
-    .argv;
+        describe: 'number of jobs/quotes to run in parallel',
+    }).argv;
 
 (async () => {
     if (ARGV.token.length < 2) {
@@ -79,7 +74,9 @@ const ARGV = yargs
 })();
 
 async function _fillSellQuote(logs) {
-    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, {
+        v0: ARGV.v0,
+    });
     const result = await fillSellQuote({
         makerToken,
         takerToken,
@@ -93,7 +90,9 @@ async function _fillSellQuote(logs) {
 }
 
 async function _fillBuyQuote(logs) {
-    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, {
+        v0: ARGV.v0,
+    });
     const result = await fillBuyQuote({
         makerToken,
         takerToken,

@@ -28,7 +28,7 @@ class SimulationResult {
         takerTokenDecimals,
         fillDelay,
         fillValueUsd,
-        protocolFeePaid,
+        protocolFeePaid
     ) {
         this.runId = runId;
         this.simId = simId;
@@ -230,7 +230,7 @@ const parseResult = (result) => {
         protocolFeePaid
     );
     return simulationResult;
-}
+};
 
 const saveResultAsync = async (connection, result) => {
     try {
@@ -273,7 +273,7 @@ void (async () => {
             console.log(`Uploading ${results.length} results`);
             const chunks = _.chunk(results, 100);
             for (const chunk of chunks) {
-                const parsedChunks = chunk.map(r => parseResult(r));
+                const parsedChunks = chunk.map((r) => parseResult(r));
                 await connection.manager.save(parsedChunks);
             }
             process.exit(0);

@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 const BigNumber = require('bignumber.js');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -16,7 +16,7 @@ const CONFIG_TEMPLATE = {
     taker: '0xd00d00caca000000000000000000000000001337',
     transformers: {
         deployer: '0x80a36559ab9a497fb658325ed771a584eb0f13da',
-    }
+    },
 };
 
 function randomAddress() {
@@ -33,16 +33,13 @@ function toHex(v) {
 
 async function delay(cb, delay) {
     return new Promise((accept, reject) => {
-        setTimeout(
-            async () => {
-                try {
-                    accept(await cb());
-                } catch (err) {
-                    reject(err);
-                }
-            },
-            delay,
-        );
+        setTimeout(async () => {
+            try {
+                accept(await cb());
+            } catch (err) {
+                reject(err);
+            }
+        }, delay);
     });
 }
 
@@ -61,7 +58,7 @@ function getRandomBracketValue(stops) {
     const i = _.random(0, stops.length - 2);
     const min = stops[i];
     const max = stops[i + 1];
-    return ((max - min) * Math.random()) + min;
+    return (max - min) * Math.random() + min;
 }
 
 function toTokenAmount(token, units) {
@@ -126,12 +123,18 @@ function getRandomQuotePair(tokens, opts = {}) {
 async function updateTokenPrices() {
     console.info('Updating token prices from coingecko...');
     const cgQueryParams = [
-        `ids=${Object.values(TOKENS).map(i => i.cgId).join(',')}`,
+        `ids=${Object.values(TOKENS)
+            .map((i) => i.cgId)
+            .join(',')}`,
         `vs_currencies=usd`,
     ];
-    const resp = await (await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?${cgQueryParams.join('&')}`,
-    )).json();
+    const resp = await (
+        await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?${cgQueryParams.join(
+                '&'
+            )}`
+        )
+    ).json();
     Object.entries(resp).forEach(([cgId, price]) => {
         for (const symbol in TOKENS) {
             if (TOKENS[symbol].cgId === cgId) {
@@ -181,4 +184,4 @@ module.exports = {
     parseURLSpec,
     updateTokenPrices,
     loadConfig,
-}
+};

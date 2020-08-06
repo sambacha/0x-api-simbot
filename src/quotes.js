@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 require('colors');
 const AbiEncoder = require('web3-eth-abi');
 const BigNumber = require('bignumber.js');
@@ -11,7 +11,13 @@ const ethjs = require('ethereumjs-util');
 
 const zeroEx = require('./quote_sources/zero_ex');
 const oneInch = require('./quote_sources/one_inch');
-const { delay, loadConfig, randomAddress, toHex, toTokenAmount } = require('./utils');
+const {
+    delay,
+    loadConfig,
+    randomAddress,
+    toHex,
+    toTokenAmount,
+} = require('./utils');
 const {
     eth,
     loadArtifact,
@@ -21,21 +27,19 @@ const {
 const TOKENS = require('./tokens');
 const CONFIG = loadConfig();
 
-const ERC20_PROXY = CONFIG.erc20Proxy;
-const EXCHANGE = CONFIG.exchange;
 const ARTIFACTS = {
     MarketCallTaker: loadArtifact(`build/MarketCallTaker.output.json`),
     HackedWallet: loadArtifact(`build/HackedWallet.output.json`),
     TransformerDeployer: loadArtifact(`build/TransformerDeployer.output.json`),
     NoGST: loadArtifact(`build/NoGST.output.json`),
-}
+};
 const takerContract = createContractFromArtifact(
     ARTIFACTS.MarketCallTaker,
-    CONFIG.taker,
+    CONFIG.taker
 );
 const transformerDeployer = createContractFromArtifact(
     ARTIFACTS.TransformerDeployer,
-    CONFIG.transformers.deployer,
+    CONFIG.transformers.deployer
 );
 
 // Track the block number at which a quote is being filled.
@@ -53,7 +57,7 @@ async function fillSellQuote(opts) {
     if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
-            quote.metadata.fillDelay * 1000,
+            quote.metadata.fillDelay * 1000
         );
     } else {
         await delay(() => {}, 10000);
@@ -65,17 +69,13 @@ async function fillBuyQuote(opts) {
     if (quote && quote.data) {
         return delay(
             async () => fillQuote(quote),
-            quote.metadata.fillDelay * 1000,
+            quote.metadata.fillDelay * 1000
         );
     }
 }
 
 async function fillQuote(quote) {
-    const {
-        makerToken,
-        takerToken,
-        maxSellAmount,
-    } = quote.metadata;
+    const { id, makerToken, takerToken, maxSellAmount } = quote.metadata;
     const transformers = await getTransformersOverrides();
     const overrides = await getOverrides();
     // Synchronize fill block numbers across quotes under the same id.
@@ -84,57 +84,82 @@ async function fillQuote(quote) {
         : await eth.getBlockNumber();
     FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE[id] = blockNumber;
     try {
-        let result = normalizeSwapResult(await takerContract.fill({
-            to: quote.to,
-            makerToken: TOKENS[makerToken].address,
-            takerToken: TOKENS[takerToken].address,
-            wallet: TOKENS[takerToken].wallet,
-            spender: quote.allowanceTarget || ERC20_PROXY,
-            exchange: EXCHANGE,
-            data: quote.data,
-            orders: quote.orders,
-            protocolFeeAmount: quote.protocolFee,
-            sellAmount: maxSellAmount,
-            transformerDeployer: transformerDeployer.address,
-            transformersDeployData: transformers.map(({deployData}) => deployData),
-        }).call({
-            block: blockNumber,
-            gas: 20e6,
-            gasPrice: quote.gasPrice,
-            value: quote.value,
-            from: TOKENS['ETH'].wallet,
-            overrides: {
-                [takerContract.address]: { code: ARTIFACTS.MarketCallTaker.deployedBytecode },
-                [TOKENS[takerToken].wallet]: { code: ARTIFACTS.HackedWallet.deployedBytecode },
-                [config.gst]: { code: ARTIFACTS.NoGST.deployedBytecode },
-                ...(transformers.length > 0
-                    ? {
-                        [transformerDeployer.address]: {
-                            code: ARTIFACTS.TransformerDeployer.deployedBytecode,
-                            nonce: transformers[0].deploymentNonce,
+        let result = normalizeSwapResult(
+            await takerContract
+                .fill({
+                    to: quote.to,
+                    makerToken: TOKENS[makerToken].address,
+                    takerToken: TOKENS[takerToken].address,
+                    wallet: TOKENS[takerToken].wallet,
+                    spender: quote.allowanceTarget || CONFIG.ERC20_PROXY,
+                    exchange: CONFIG.EXCHANGE,
+                    data: quote.data,
+                    orders: quote.orders,
+                    protocolFeeAmount: quote.protocolFee,
+                    sellAmount: maxSellAmount,
+                    transformerDeployer: transformerDeployer.address,
+                    transformersDeployData: transformers.map(
+                        ({ deployData }) => deployData
+                    ),
+                })
+                .call({
+                    block: blockNumber,
+                    gas: 20e6,
+                    gasPrice: quote.gasPrice,
+                    value: quote.value,
+                    from: TOKENS['ETH'].wallet,
+                    overrides: {
+                        [takerContract.address]: {
+                            code: ARTIFACTS.MarketCallTaker.deployedBytecode,
                         },
-                        // Reset state for transformers to be re-deployed.
-                        ...(_.zipObject(
-                            transformers.map(({address}) => address),
-                            transformers.map(t => ({
-                                code: '0x',
-                                nonce: 0,
-                                balance: t.balance,
-                            })),
-                        )),
-                    } : {}
-                ),
-                ...overrides,
-            },
-        }));
-        let success = result.revertData === '0x' &&
+                        [TOKENS[takerToken].wallet]: {
+                            code: ARTIFACTS.HackedWallet.deployedBytecode,
+                        },
+                        [config.gst]: {
+                            code: ARTIFACTS.NoGST.deployedBytecode,
+                        },
+                        ...(transformers.length > 0
+                            ? {
+                                  [transformerDeployer.address]: {
+                                      code:
+                                          ARTIFACTS.TransformerDeployer
+                                              .deployedBytecode,
+                                      nonce: transformers[0].deploymentNonce,
+                                  },
+                                  // Reset state for transformers to be re-deployed.
+                                  ..._.zipObject(
+                                      transformers.map(
+                                          ({ address }) => address
+                                      ),
+                                      transformers.map((t) => ({
+                                          code: '0x',
+                                          nonce: 0,
+                                          balance: t.balance,
+                                      }))
+                                  ),
+                              }
+                            : {}),
+                        ...overrides,
+                    },
+                })
+        );
+        let success =
+            result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gt(0);
-        let boughtAmountUsd = new BigNumber(result.boughtAmount).div(10 ** TOKENS[makerToken].decimals).times(TOKENS[makerToken].value);
-        let gasUsedUsd = new BigNumber(result.gasUsed).times(quote.gasPrice).times(1e-18).times(TOKENS['ETH'].value);
-        let protocolFeeUsd = new BigNumber(result.protocolFeePaid).times(1e-18).times(TOKENS['ETH'].value);
+        const gasUsed = result.gasUsed.plus(quote.data.times(16));
+        let boughtAmountUsd = new BigNumber(result.boughtAmount)
+            .div(10 ** TOKENS[makerToken].decimals)
+            .times(TOKENS[makerToken].value);
+        let gasUsedUsd = new BigNumber(gasUsed)
+            .times(quote.gasPrice)
+            .times(1e-18)
+            .times(TOKENS['ETH'].value);
+        let protocolFeeUsd = new BigNumber(result.protocolFeePaid)
+            .times(1e-18)
+            .times(TOKENS['ETH'].value);
         let costUsd = gasUsedUsd.plus(protocolFeeUsd);
         let adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
-        result = { ...result, success, adjustedBoughtAmountUsd, costUsd }
+        result = { ...result, success, adjustedBoughtAmountUsd, costUsd, gasUsed };
         printFillSummary(quote, success, result);
         return {
             ...quote,
@@ -155,12 +180,15 @@ async function fillQuote(quote) {
 async function getTransformersOverrides() {
     const overrides = _.get(CONFIG, ['transformers', 'overridesByNonce'], {});
     const transformers = [];
-    for (const nonce of Object.keys(overrides).map(k => parseInt(k))) {
+    for (const nonce of Object.keys(overrides).map((k) => parseInt(k))) {
         const override = overrides[nonce];
         transformers.push({
             deploymentNonce: nonce,
-            deployData: await createContractFromArtifactPath(override.artifactPath)
-                .new(...(override.constructorArgs || [])).encode(),
+            deployData: await createContractFromArtifactPath(
+                override.artifactPath
+            )
+                .new(...(override.constructorArgs || []))
+                .encode(),
             address: toTransformerAddress(CONFIG.transformers.deployer, nonce),
             balance: override.balance,
         });
@@ -175,7 +203,7 @@ async function getOverrides() {
             code: loadArtifact(artifactPath).deployedBytecode,
             balance: balance,
             nonce: nonce,
-        }),
+        })
     );
 }
 
@@ -184,39 +212,77 @@ function toTransformerAddress(deployer, nonce) {
 }
 
 function printFillSummary(quote, success, result) {
-    const { side, makerToken, takerToken, fillDelay, fillValue } = quote.metadata;
+    const {
+        side,
+        makerToken,
+        takerToken,
+        fillDelay,
+        fillValue,
+    } = quote.metadata;
     let { sellAmount, buyAmount } = quote;
-    sellAmount = new BigNumber(sellAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2);
-    buyAmount = new BigNumber(buyAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
-    const summary = `${side.toUpperCase()} ${takerToken.bold}->${makerToken.bold} ${sellAmount.yellow} -> ${buyAmount.yellow} ($${fillValue.toFixed(2)}) after ${fillDelay.toFixed(1)}s`;
+    sellAmount = new BigNumber(sellAmount)
+        .div(10 ** TOKENS[takerToken].decimals)
+        .toFixed(2);
+    buyAmount = new BigNumber(buyAmount)
+        .div(10 ** TOKENS[makerToken].decimals)
+        .toFixed(2);
+    const summary = `${side.toUpperCase()} ${takerToken.bold}->${
+        makerToken.bold
+    } ${sellAmount.yellow} -> ${buyAmount.yellow} ($${fillValue.toFixed(
+        2
+    )}) after ${fillDelay.toFixed(1)}s`;
     let composition = quote.sources
-        .map(s => `${s.name}: ${s.proportion * 100}%`)
+        .map((s) => `${s.name}: ${s.proportion * 100}%`)
         .join(', ');
     if (doesQuoteHaveFallback(quote)) {
         composition = `${composition} (+ fallback)`;
     }
     if (success) {
-        let soldAmount = new BigNumber(result.soldAmount).div(10 ** TOKENS[takerToken].decimals).toFixed(2);
-        let boughtAmount = new BigNumber(result.boughtAmount).div(10 ** TOKENS[makerToken].decimals).toFixed(2);
+        let soldAmount = new BigNumber(result.soldAmount)
+            .div(10 ** TOKENS[takerToken].decimals)
+            .toFixed(2);
+        let boughtAmount = new BigNumber(result.boughtAmount)
+            .div(10 ** TOKENS[makerToken].decimals)
+            .toFixed(2);
         let gasUsed = new BigNumber(result.gasUsed);
-        let usdDisplay = `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${result.costUsd.toFixed(2).red})`
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold} ${soldAmount.yellow} -> ${boughtAmount.yellow} ${usdDisplay}\n\t${composition} ${gasUsed}`);
+        let usdDisplay = `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${
+            result.costUsd.toFixed(2).red
+        })`;
+        console.log(
+            `${summary} @ ${quote.metadata.apiPath}\n\t${'✔ PASS'.green.bold} ${
+                soldAmount.yellow
+            } -> ${
+                boughtAmount.yellow
+            } ${usdDisplay}\n\t${composition} ${gasUsed}`
+        );
     } else {
-        console.log(`${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${result.revertData})\n\t${composition}`);
+        console.log(
+            `${summary} @ ${quote.metadata.apiPath}\n\t${'✘ FAIL'.red.bold} (${
+                result.revertData
+            })\n\t${composition}`
+        );
     }
 }
 
 function doesQuoteHaveFallback(quote) {
-    const nativeOrders = quote.orders.filter(o => /^0xf47261b0/.test(o.makerAssetData));
+    const nativeOrders = quote.orders.filter((o) =>
+        /^0xf47261b0/.test(o.makerAssetData)
+    );
     if (nativeOrders.length == 0) {
         return false;
     }
-    const bridgeOrders = quote.orders.filter(o => !/^0xf47261b0/.test(o.makerAssetData));
+    const bridgeOrders = quote.orders.filter(
+        (o) => !/^0xf47261b0/.test(o.makerAssetData)
+    );
     if (quote.metadata.side === 'sell') {
-        const totalBridgesTakerAssetAmount = BigNumber.sum(...bridgeOrders.map(o => o.takerAssetAmount));
+        const totalBridgesTakerAssetAmount = BigNumber.sum(
+            ...bridgeOrders.map((o) => o.takerAssetAmount)
+        );
         return totalBridgesTakerAssetAmount.gte(quote.sellAmount);
     } else {
-        const totalBridgesMakerAssetAmount = BigNumber.sum(...bridgeOrders.map(o => o.makerAssetAmount));
+        const totalBridgesMakerAssetAmount = BigNumber.sum(
+            ...bridgeOrders.map((o) => o.makerAssetAmount)
+        );
         return totalBridgesMakerAssetAmount.gte(quote.buyAmount);
     }
 }
