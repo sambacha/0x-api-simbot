@@ -71,7 +71,7 @@ let dbConnection;
     if (ARGV.db) {
         dbConnection = await createConnectionAsync(ARGV.db);
     }
-    console.log(`Simulation run` + `${runId}`.yellow);
+    console.log(`Simulation run ` + `${runId}`.yellow);
     console.log(`Tokens: ${ARGV.token}`);
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
