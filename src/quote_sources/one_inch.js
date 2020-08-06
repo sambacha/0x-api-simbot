@@ -21,7 +21,6 @@ async function getSellQuote(opts) {
         `disableEstimate=true`
     ].join('&');
     const url = `${apiPath}?${qs}`;
-    console.log(url);
     try {
         const resp = await fetch(url);
         if (!resp.ok) {

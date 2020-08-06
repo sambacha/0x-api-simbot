@@ -18,16 +18,26 @@ def get_program_args():
     args.add_argument('path', type=str)
     args.add_argument('--buys', action='store_true', default=False)
     args.add_argument('--sells', action='store_true', default=False)
+    args.add_argument('--adjusted', action='store_true', default=False)
     args.add_argument('--tokens', '-t', type=str, default='')
     return args.parse_args()
+args = get_program_args()
 
 def get_realized_price(swap):
     result = swap['metadata']['swapResult']
-    bought = Decimal(result['boughtAmount'])
-    sold = Decimal(result['soldAmount'])
+    if args.adjusted:
+        if swap['metadata']['side'] == 'sell':
+            bought = Decimal(result['adjustedBoughtAmountUsd'])
+            sold = Decimal(result['soldAmountUsd'])
+        else:
+            bought = Decimal(result['boughtAmountUsd'])
+            sold = Decimal(result['adjustedSoldAmountUsd'])
+    else:
+        bought = Decimal(result['boughtAmount'])
+        sold = Decimal(result['soldAmount'])
     return float(bought / sold)
 
-def are_valid_swaps(args, swaps):
+def are_valid_swaps(swaps):
     if not all(is_successful_swap(s) for s in swaps):
         return False
     if args.buys and any(s['metadata']['side'] != 'buy' for s in swaps):
@@ -42,8 +52,7 @@ def are_valid_swaps(args, swaps):
         return False
     return True
 
-args = get_program_args()
-data = [d for d in load_ab_data(args.path) if are_valid_swaps(args, d.values())]
+data = [d for d in load_ab_data(args.path) if are_valid_swaps(d.values())]
 print(f'Loaded {len(data)} data items')
 
 BPS_STOPS = [1, 5, 10, 50, 100, 1000]
@@ -88,6 +97,7 @@ plt.xticks(xs, [f'{stop}bps+ ({totals_by_stop[stop]})' for stop in stops])
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: '%d%%' % (y * 100)))
 plt.xlabel('winner\'s edge')
 plt.ylabel('win rate')
+metric_type = 'adjusted realized' if args.adjusted else 'realized'
 swap_type = 'buys' if args.buys else 'sells' if args.sells else 'swaps'
-plt.title(f'A-B realized fill win rate by edge ({sum(totals_by_stop.values())}/{len(data)} unequal {swap_type})')
+plt.title(f'A-B {metric_type} fill win rate by edge ({sum(totals_by_stop.values())}/{len(data)} unequal {swap_type})')
 plt.show()

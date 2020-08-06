@@ -65,6 +65,9 @@ async function fillSellQuote(opts) {
 }
 
 async function fillBuyQuote(opts) {
+    if (opts.apiPath.includes('1inch')) {
+        throw new Error(`buys not supported on 1inch`);
+    }
     const quote = await zeroEx.getBuyQuote(opts);
     if (quote && quote.data) {
         return delay(
