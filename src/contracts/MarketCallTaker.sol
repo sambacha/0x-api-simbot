@@ -13,6 +13,7 @@ contract MarketCallTaker {
 
     IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 private constant ETH = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address private constant ZEROEX_PROTOCOL_FEE_COLLECTOR = 0xa26e80e7Dea86279c6d778D702Cc413E6CFfA777;
 
     struct FillParams {
         address payable to;
@@ -32,12 +33,12 @@ contract MarketCallTaker {
     struct SwapResult {
         uint256 boughtAmount;
         uint256 soldAmount;
-        IExchange.OrderInfo[] orderInfos;
         bytes revertData;
         uint32 blockNumber;
         uint256 gasStart;
         uint256 gasEnd;
         uint256 ethBalance;
+        uint256 protocolFeePaid;
     }
 
     using LibERC20Token for IERC20;
@@ -48,6 +49,7 @@ contract MarketCallTaker {
         returns (SwapResult memory swapResult)
     {
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
+        uint256 feeCollectorBalanceBefore = _protocolFeeCollectorBalance();
 
         swapResult.blockNumber = uint32(block.number);
 
@@ -60,12 +62,6 @@ contract MarketCallTaker {
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
 
-        swapResult.orderInfos = new IExchange.OrderInfo[](params.orders.length);
-        for (uint256 i = 0; i < params.orders.length; ++i) {
-            swapResult.orderInfos[i] = IExchange(params.exchange)
-                .getOrderInfo(params.orders[i]);
-        }
-
         if (params.transformersDeployData.length > 0) {
             params.transformerDeployer.deploy(params.transformersDeployData);
         }
@@ -74,6 +70,7 @@ contract MarketCallTaker {
         (bool success, bytes memory callResult) =
             params.to.call{value: msg.value}(params.data);
         swapResult.gasEnd = gasleft();
+        swapResult.protocolFeePaid = _protocolFeeCollectorBalance() - feeCollectorBalanceBefore;
 
         if (!success) {
             swapResult.revertData = callResult;
@@ -119,4 +116,14 @@ contract MarketCallTaker {
         bytes calldata data,
         bytes calldata operatorData
     ) external {}
+
+    function _protocolFeeCollectorBalance()
+        private
+        view
+        returns (uint256 balance)
+    {
+        balance = WETH.balanceOf(ZEROEX_PROTOCOL_FEE_COLLECTOR);
+        balance += ZEROEX_PROTOCOL_FEE_COLLECTOR.balance;
+        return balance;
+    }
 }

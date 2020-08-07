@@ -6,20 +6,27 @@
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
-        "start": "yarn build-contracts && node ./src/index.js",
-        "start-ab": "yarn build-contracts && node ./src/a-b.js",
-        "build-contracts": "soluble compile -O ./build ./src/contracts/**.sol"
+        "start": "node ./src/index.js",
+        "start-ab": "node ./src/a-b.js",
+        "build-contracts": "soluble compile -O ./build ./src/contracts/**.sol",
+        "prettier": "prettier --write src/**.js"
     },
     "dependencies": {
         "colors": "^1.4.0",
         "flex-contract": "^2.2.2",
         "flex-ether": "^1.7.1",
         "lodash": "^4.17.19",
+        "moniker": "^0.1.2",
         "node-fetch": "^2.6.0",
-        "solc": "^0.6.10",
+        "pg": "^8.3.0",
+        "solc": "0.6.12",
         "soluble": "^1.0.4",
+        "typeorm": "^0.2.25",
         "web3-eth-abi": "^1.2.6",
         "web3-providers-ipc": "^1.2.6",
         "yargs": "^15.1.0"
+    },
+    "devDependencies": {
+        "prettier": "^2.0.5"
     }
 }

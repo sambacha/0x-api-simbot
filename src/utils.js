@@ -1,10 +1,11 @@
-'use strict'
+'use strict';
 const BigNumber = require('bignumber.js');
 const crypto = require('crypto');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const path = require('path');
 const _ = require('lodash');
+const moniker = require('moniker');
 
 const TOKENS = require('./tokens');
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
@@ -16,7 +17,7 @@ const CONFIG_TEMPLATE = {
     taker: '0xd00d00caca000000000000000000000000001337',
     transformers: {
         deployer: '0x80a36559ab9a497fb658325ed771a584eb0f13da',
-    }
+    },
 };
 
 function randomAddress() {
@@ -33,37 +34,42 @@ function toHex(v) {
 
 async function delay(cb, delay) {
     return new Promise((accept, reject) => {
-        setTimeout(
-            async () => {
-                try {
-                    accept(await cb());
-                } catch (err) {
-                    reject(err);
-                }
-            },
-            delay,
-        );
+        setTimeout(async () => {
+            try {
+                accept(await cb());
+            } catch (err) {
+                reject(err);
+            }
+        }, delay);
     });
 }
 
-function forever(cb) {
+function forever(cb, interval = 0, initialDelay = 0) {
     const repeater = async () => {
-        await cb();
-        setTimeout(repeater, 0);
+        try {
+            await cb();
+        } finally {
+            setTimeout(repeater, interval);
+        }
     };
-    repeater();
+    return delay(() => repeater(), initialDelay);
 }
 
 function getRandomBracketValue(stops) {
     const i = _.random(0, stops.length - 2);
     const min = stops[i];
     const max = stops[i + 1];
-    return ((max - min) * Math.random()) + min;
+    return (max - min) * Math.random() + min;
 }
 
-function toTokenAmount(token, units) {
+function toTokenWeis(token, units) {
     const base = new BigNumber(10).pow(TOKENS[token].decimals);
-    return units.times(base).integerValue();
+    return new BigNumber(units).times(base).integerValue();
+}
+
+function fromTokenWeis(token, weis) {
+    const base = new BigNumber(10).pow(TOKENS[token].decimals);
+    return new BigNumber(weis).div(base);
 }
 
 class LogWriter {
@@ -122,14 +128,19 @@ function getRandomQuotePair(tokens, opts = {}) {
 
 async function updateTokenPrices() {
     console.info('Updating token prices from coingecko...');
-    const symbols = Object.keys(TOKENS);
     const cgQueryParams = [
-        `ids=${Object.values(TOKENS).map(i => i.cgId).join(',')}`,
+        `ids=${Object.values(TOKENS)
+            .map((i) => i.cgId)
+            .join(',')}`,
         `vs_currencies=usd`,
     ];
-    const resp = await (await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?${cgQueryParams.join('&')}`,
-    )).json();
+    const resp = await (
+        await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?${cgQueryParams.join(
+                '&'
+            )}`
+        )
+    ).json();
     Object.entries(resp).forEach(([cgId, price]) => {
         for (const symbol in TOKENS) {
             if (TOKENS[symbol].cgId === cgId) {
@@ -166,6 +177,10 @@ function parseURLSpec(raw) {
     return { id: m[2], url: m[2] };
 }
 
+function randomMoniker() {
+    return moniker.generator([moniker.verb, moniker.adjective, moniker.noun]).choose();
+}
+
 module.exports = {
     randomAddress,
     randomHash,
@@ -174,9 +189,11 @@ module.exports = {
     forever,
     getRandomBracketValue,
     getRandomQuotePair,
-    toTokenAmount,
+    toTokenWeis,
+    fromTokenWeis,
     LogWriter,
     parseURLSpec,
     updateTokenPrices,
     loadConfig,
-}
+    randomMoniker,
+};

@@ -20,11 +20,12 @@ def get_program_args():
     args.add_argument('--sells', action='store_true', default=False)
     args.add_argument('--tokens', '-t', type=str, default='')
     return args.parse_args()
+args = get_program_args()
 
 def get_quote_price(swap):
-    return float(swap['price'])
+    return float(Decimal(swap['buyAmount']) / Decimal(swap['sellAmount']))
 
-def are_valid_swaps(args, swaps):
+def are_valid_swaps(swaps):
     if not all(is_successful_swap(s) for s in swaps):
         return False
     if args.buys and any(s['metadata']['side'] != 'buy' for s in swaps):
@@ -39,8 +40,7 @@ def are_valid_swaps(args, swaps):
         return False
     return True
 
-args = get_program_args()
-data = [d for d in load_ab_data(args.path) if are_valid_swaps(args, d.values())]
+data = [d for d in load_ab_data(args.path) if are_valid_swaps(d.values())]
 print(f'Loaded {len(data)} data items')
 
 BPS_STOPS = [1, 5, 10, 50, 100, 1000]

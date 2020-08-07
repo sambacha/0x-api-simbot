@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 require('colors');
 const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
@@ -15,11 +15,7 @@ const {
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
-const {
-    DELAY_STOPS,
-    FILL_STOPS,
-    LIVE_API_PATH,
-} = require('./constants');
+const { DELAY_STOPS, FILL_STOPS, LIVE_API_PATH } = require('./constants');
 
 const ARGV = yargs
     .option('output', {
@@ -32,14 +28,15 @@ const ARGV = yargs
         type: 'string',
         demandOption: true,
         default: LIVE_API_PATH,
-        describe: 'swap/quote endpoint URL'
+        describe: 'swap/quote endpoint URL',
     })
     .option('token', {
         alias: 't',
         type: 'array',
         choices: Object.keys(TOKENS),
-        default: ['WETH', 'DAI', 'USDC'],
-        describe: 'token to use in quotes (can be repeated)'
+        default: ['WETH', 'DAI'],
+        // default: ['USDC', 'DAI'],
+        describe: 'token to use in quotes (can be repeated)',
     })
     .option('v0', {
         type: 'boolean',
@@ -59,32 +56,34 @@ const ARGV = yargs
         alias: 'j',
         type: 'number',
         default: 8,
-        describe: 'number of jobs/quotes to run in parallel'
-    })
-    .argv;
+        describe: 'number of jobs/quotes to run in parallel',
+    }).argv;
 
 (async () => {
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
-    await updateTokenPrices();
+    // Keep token prices up to date for long running tests
+    forever(() => updateTokenPrices(), 300000);
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, () => forever(() => _fillSellQuote(logs)));
+        _.times(ARGV.jobs, i => forever(() => _fillSellQuote(logs, 1000, i * 1000)));
     }
     if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, () => forever(() => _fillBuyQuote(logs)));
+        _.times(ARGV.jobs, i => forever(() => _fillBuyQuote(logs), 1000, i * 1000));
     }
 })();
 
 async function _fillSellQuote(logs) {
-    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, {
+        v0: ARGV.v0,
+    });
     const result = await fillSellQuote({
         makerToken,
         takerToken,
         id: randomHash(),
         apiPath: parseURLSpec(ARGV.url).url,
-        apiPathId: parseURLSpec(ARGV.url).id,
+        apiId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
@@ -92,13 +91,15 @@ async function _fillSellQuote(logs) {
 }
 
 async function _fillBuyQuote(logs) {
-    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, { v0: ARGV.v0 });
+    const [makerToken, takerToken] = getRandomQuotePair(ARGV.token, {
+        v0: ARGV.v0,
+    });
     const result = await fillBuyQuote({
         makerToken,
         takerToken,
         id: randomHash(),
         apiPath: parseURLSpec(ARGV.url).url,
-        apiPathId: parseURLSpec(ARGV.url).id,
+        apiId: parseURLSpec(ARGV.url).id,
         swapValue: getRandomBracketValue(FILL_STOPS),
         fillDelay: getRandomBracketValue(DELAY_STOPS),
     });
