@@ -83,6 +83,10 @@ sns.scatterplot(
     ),
 )
 
+for t in plt.gca().get_legend().texts[1:]:
+    url = t.get_text()
+    t.set_text( '%s - %d%%' % (url, sum(1 for r in rows if r[0] == url) * 100 / len(rows)))
+
 plt.yscale('log')
 # plt.xscale('log')
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: f'{int(y)}'))
