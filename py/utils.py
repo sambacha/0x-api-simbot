@@ -17,8 +17,8 @@ def load_data(path, url=None):
 
 def format_value(value):
     if value >= 1000:
-        return f'${value // 1000}K'
-    return f'${value}'
+        return f'${int(value / 1000)}K'
+    return f'${int(value)}'
 
 def get_max_value(swap):
     fill_value = float(swap['metadata']['fillValue'])

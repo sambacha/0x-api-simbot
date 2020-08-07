@@ -83,14 +83,10 @@ sns.scatterplot(
     ),
 )
 
-# plt.legend()
-# plt.yticks(xs, [f'{stop}bps+ ({totals_by_stop[stop]})' for stop in stops])
-# plt.xticks(list(range(len(VALUES))), [f'< {format_value(max_value)}' for min_value, max_value in VALUES])
+plt.yscale('log')
+# plt.xscale('log')
 plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, pos: f'{int(y)}'))
 plt.gca().xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: format_value(x)))
-# plt.xlabel('winner\'s edge')
-# plt.ylabel('win rate')
-plt.yscale('log')
 metric_type = 'adjusted realized' if args.adjusted else 'realized'
 swap_type = 'buys' if args.buys else 'sells' if args.sells else 'swaps'
 plt.title(f'A-B {metric_type} fill win rate ({len(rows)}/{len(data)} unequal {swap_type})')
