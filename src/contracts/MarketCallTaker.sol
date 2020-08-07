@@ -9,6 +9,11 @@ import './LibERC20Token.sol';
 import './IWETH.sol';
 import './TransformerDeployer.sol';
 
+interface IAllowance {
+    function setAllowances()
+        external;
+}
+
 contract MarketCallTaker {
 
     IWETH private constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -48,6 +53,10 @@ contract MarketCallTaker {
         payable
         returns (SwapResult memory swapResult)
     {
+        // Initialize allowances on the flash-wallet to avoid unecessary gas overhead.
+        try IAllowance(0x22F9dCF4647084d6C31b2765F6910cd85C178C18).setAllowances() {}
+        catch (bytes memory) {}
+
         require(params.protocolFeeAmount <= msg.value, "INSUFFICIENT_ETH_FOR_FEES");
         uint256 feeCollectorBalanceBefore = _protocolFeeCollectorBalance();
 
