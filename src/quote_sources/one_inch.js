@@ -20,7 +20,7 @@ async function getSellQuote(opts) {
         `slippage=1`,
         `disableEstimate=true`
     ].join('&');
-    const url = `${apiPath}?${qs}`;
+    const url = `${/^(.+?)(\?.+)?$/.exec(apiPath)[1]}?${qs}`;
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
