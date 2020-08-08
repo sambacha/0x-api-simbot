@@ -72,6 +72,7 @@ for d in data:
         continue
     rows.append([best_swap_url, bps, float(best_swap['metadata']['fillValue'])])
     urls.add(best_swap_url)
+rows = sorted(rows, key=lambda r: r[0])
 
 sns.scatterplot(
     x='fill size',
