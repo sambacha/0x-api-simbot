@@ -12,6 +12,7 @@ const {
     randomHash,
     updateTokenPrices,
     randomMoniker,
+    updateTokenWallets,
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
@@ -75,15 +76,20 @@ let dbConnection;
     }
     console.log(`Simulation run ` + `${runId}`.yellow);
     console.log(`Tokens: ${ARGV.token}`);
+    await updateTokenWallets();
 
     // Keep token prices up to date for long running tests
     forever(() => updateTokenPrices(), 300000);
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, i => forever(() => fillSellQuotes(ARGV.url, logs), 1000, i * 1000));
+        _.times(ARGV.jobs, (i) =>
+            forever(() => fillSellQuotes(ARGV.url, logs), 1000, i * 1000)
+        );
     }
     if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, i => forever(() => fillBuyQuotes(ARGV.url, logs), 1000, i * 1000));
+        _.times(ARGV.jobs, (i) =>
+            forever(() => fillBuyQuotes(ARGV.url, logs), 1000, i * 1000)
+        );
     }
 })();
 

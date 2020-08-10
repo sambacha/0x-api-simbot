@@ -151,6 +151,30 @@ async function updateTokenPrices() {
     console.info(`Updated ${Object.keys(resp).length} tokens.`);
 }
 
+async function updateTokenWallets() {
+    console.info('Updating token wallets from bloxy...');
+    await Promise.all(
+        Object.values(TOKENS).map(async (t) => {
+            try {
+                const resp = await (
+                    await fetch(
+                        `https://api.bloxy.info/token/token_holders_list?token=${t.address}&key=ACCAsmaX6X9rW&format=structure`
+                    )
+                ).json();
+                const walletResult = resp.find(
+                    (r) => r.address_type === 'Wallet'
+                );
+                t.wallet =
+                    walletResult && walletResult.address
+                        ? walletResult.address
+                        : t.wallet;
+            } catch (e) {
+                console.error(`Unable to update token wallet ${t.address}`);
+            }
+        })
+    );
+}
+
 function loadConfig() {
     let rawConfig;
     try {
@@ -178,7 +202,9 @@ function parseURLSpec(raw) {
 }
 
 function randomMoniker() {
-    return moniker.generator([moniker.verb, moniker.adjective, moniker.noun]).choose();
+    return moniker
+        .generator([moniker.verb, moniker.adjective, moniker.noun])
+        .choose();
 }
 
 module.exports = {
@@ -196,4 +222,5 @@ module.exports = {
     updateTokenPrices,
     loadConfig,
     randomMoniker,
+    updateTokenWallets,
 };

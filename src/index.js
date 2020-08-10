@@ -1,6 +1,5 @@
 'use strict';
 require('colors');
-const BigNumber = require('bignumber.js');
 const yargs = require('yargs');
 const _ = require('lodash');
 
@@ -12,6 +11,7 @@ const {
     parseURLSpec,
     randomHash,
     updateTokenPrices,
+    updateTokenWallets,
 } = require('./utils');
 const TOKENS = require('./tokens');
 const { fillBuyQuote, fillSellQuote } = require('./quotes');
@@ -63,14 +63,19 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
+    await updateTokenWallets();
     // Keep token prices up to date for long running tests
     forever(() => updateTokenPrices(), 300000);
     const logs = new LogWriter(ARGV.output);
     if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, i => forever(() => _fillSellQuote(logs, 1000, i * 1000)));
+        _.times(ARGV.jobs, (i) =>
+            forever(() => _fillSellQuote(logs, 1000, i * 1000))
+        );
     }
     if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, i => forever(() => _fillBuyQuote(logs), 1000, i * 1000));
+        _.times(ARGV.jobs, (i) =>
+            forever(() => _fillBuyQuote(logs), 1000, i * 1000)
+        );
     }
 })();
 
