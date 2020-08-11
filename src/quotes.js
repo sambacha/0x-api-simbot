@@ -149,7 +149,7 @@ async function fillQuote(quote) {
         const success =
             result.revertData === '0x' &&
             new BigNumber(result.boughtAmount).gt(0);
-        const txDataGasUsed = quote.data.length * 16;
+        const txDataGasUsed = countNonzeroBytes(quote.data) * 16;
         const gasUsed = result.gasUsed + txDataGasUsed;
         const boughtAmountUsd = fromTokenWeis(makerToken, result.boughtAmount)
             .times(TOKENS[makerToken].value);
@@ -320,6 +320,17 @@ function normalizeSwapResult(result) {
         ethBalance: result.ethBalance,
         protocolFeePaid: result.protocolFeePaid,
     };
+}
+
+function countNonzeroBytes(bytes) {
+    const buf = ethjs.toBuffer(bytes);
+    let count = 0;
+    for (const b of buf) {
+        if (b != 0) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 module.exports = {
