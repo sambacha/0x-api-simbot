@@ -2,8 +2,6 @@
 pragma solidity ^0.6;
 pragma experimental ABIEncoderV2;
 
-contract NullContract {}
-
 contract TransformerDeployer {
     function deploy(bytes[] memory transformersDeployData)
         public
@@ -16,6 +14,9 @@ contract TransformerDeployer {
             address a;
             assembly {
                 a := create(callvalue(), add(deployData, 32), mload(deployData))
+            }
+            if (a == address(0)) {
+                revert('TransformerDeployer/DEPLOY_FAILED');
             }
             addrs[i] = a;
         }

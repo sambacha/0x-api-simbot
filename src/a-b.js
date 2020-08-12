@@ -76,7 +76,7 @@ let dbConnection;
     }
     console.log(`Simulation run ` + `${runId}`.yellow);
     console.log(`Tokens: ${ARGV.token}`);
-    await updateTokenWallets();
+    await updateTokenWallets(ARGV.token);
 
     // Keep token prices up to date for long running tests
     forever(() => updateTokenPrices(), 300000);

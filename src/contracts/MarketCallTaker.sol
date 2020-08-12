@@ -8,6 +8,7 @@ import './IExchange.sol';
 import './LibERC20Token.sol';
 import './IWETH.sol';
 import './TransformerDeployer.sol';
+import './ContractDeployer.sol';
 
 interface IAllowance {
     function setAllowances()
@@ -33,6 +34,8 @@ contract MarketCallTaker {
         IExchange.Order[] orders;
         TransformerDeployer transformerDeployer;
         bytes[] transformersDeployData;
+        ContractDeployer deployer;
+        ContractDeployer.DeployData[] deployments;
     }
 
     struct SwapResult {
@@ -71,6 +74,12 @@ contract MarketCallTaker {
             params.takerToken.approveIfBelow(params.spender, takerBalanceBefore);
         }
 
+        // Deploy contracts.
+        if (params.deployments.length > 0) {
+            params.deployer.deploy(params.deployments);
+        }
+
+        // Deploy transformers.
         if (params.transformersDeployData.length > 0) {
             params.transformerDeployer.deploy(params.transformersDeployData);
         }

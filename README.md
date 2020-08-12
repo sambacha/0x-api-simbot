@@ -17,10 +17,10 @@ NODE_RPC=YOUR_GETH_RPC_URL yarn start-ab {--url SWAP_QUOTE_URL} [--output SWAPS_
 ### Command Line Options
 | option | description |
 |--------|-------------|
-| `--url URL`    | The swap-quote API url. Can be repeated for ex: `https://api.0x.org/swap/v0/quote`. |
-| `--output FILE` | JSON file to append sim data to. The python analytics tools can parse this file. |
-| `--token TOKEN`  | Tokens to include in the simulations. Can be repeated. Defaults are `WETH`, `DAI`, `USDC`. |
-| `--jobs N` | Number of concurrent requests to make. Default is `1`, which is very slow. |
+| `--url -u URL`    | The swap-quote API url. Can be repeated for ex: `https://api.0x.org/swap/v0/quote`. |
+| `--output -o FILE` | JSON file to append sim data to. The python analytics tools can parse this file. |
+| `--token -t TOKEN`  | Tokens to include in the simulations. Can be repeated. Defaults are `WETH`, `DAI`, `USDC`. |
+| `--jobs -j N` | Number of concurrent requests to make. Default is `1`, which is very slow. |
 | `--buys` | Whether to only do buy swaps. Default is both. |
 | `--sells` | Whether to only do sells swaps. Default is both. |
 | `--v0` | Whether to run in v0 (non-Exchange Proxy) compat mode. This will prevent swaps to ETH. |
@@ -39,6 +39,7 @@ Example:
     "exchange": "0x61935cbdd02287b511119ddb11aeb42f1593b7ef",
     "forwarder": "0x6958f5e95332d93d21af0d7b9ca85b8212fee0a5",
     "taker": "0xd00d00caca000000000000000000000000001337",
+    "gst": "0x0000000000b3F879cb30FE243b4Dfee438691c04",
     "transformers": {
         "deployer": "0x80a36559ab9a497fb658325ed771a584eb0f13da",
         // Transformers that have constructor-defined immutable state have to be
@@ -46,8 +47,8 @@ Example:
         "overridesByNonce": {
             "3": {
                 "artifactPath": "../0x-monorepo/contracts/zero-ex/test/generated-artifacts/FillQuoteTransformer.json",
-                "constructorArgs": ["0x61935cbdd02287b511119ddb11aeb42f1593b7ef"],
-                "balance": 0
+                "constructorArgs": ["0x61935cbdd02287b511119ddb11aeb42f1593b7ef"], // optional
+                "balance": 0 // optional
             }
         }
     },
@@ -56,9 +57,23 @@ Example:
     "overrides": {
         "0x95e6f48254609a6ee006f7d493c8e5fb97094cef": {
             "artifactPath": "../0x-monorepo/contracts/asset-proxy/test/generated-artifacts/ERC20Proxy.json",
-            "balance": 0,
-            "nonce": 1
-        }
+            "balance": 0, // optional
+            "nonce": 1 // optional
+        },
+    },
+    // Contracts to deploy just-in-time. These will be deployed in order of occurence by
+    // `deployer`, starting with `initialNonce` nonce. You can use
+    // `yarn deployed-address` to predict the address of the contract.
+    "deployments": {
+        "deployer": "0xdededededededededededededededededededede",
+        "initialNonce": 0,
+        "contracts": [
+            {
+                "artifactPath": "../0x-monorepo/contracts/exchange/test/generated-artifacts/Exchange.json",
+                "constructorArgs": [1], // optional
+                "value": 0 // optional
+            }
+        ]
     }
 }
 

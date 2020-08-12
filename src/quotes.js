@@ -17,6 +17,7 @@ const {
     randomAddress,
     toHex,
     fromTokenWeis,
+    toDeployedAddress,
 } = require('./utils');
 const {
     eth,
@@ -32,6 +33,7 @@ const ARTIFACTS = {
     HackedWallet: loadArtifact(`build/HackedWallet.output.json`),
     TransformerDeployer: loadArtifact(`build/TransformerDeployer.output.json`),
     NoGST: loadArtifact(`build/NoGST.output.json`),
+    ContractDeployer: loadArtifact('build/ContractDeployer.output.json'),
 };
 const takerContract = createContractFromArtifact(
     ARTIFACTS.MarketCallTaker,
@@ -104,6 +106,8 @@ async function fillQuote(quote) {
                     transformersDeployData: transformers.map(
                         ({ deployData }) => deployData
                     ),
+                    deployer: CONFIG.deployments.deployer,
+                    deployments: await createDeploymentsData(),
                 })
                 .call({
                     block: blockNumber,
@@ -120,6 +124,10 @@ async function fillQuote(quote) {
                         },
                         [CONFIG.gst]: {
                             code: ARTIFACTS.NoGST.deployedBytecode,
+                        },
+                        [CONFIG.deployments.deployer]: {
+                            code: ARTIFACTS.ContractDeployer.deployedBytecode,
+                            nonce: CONFIG.deployments.initialNonce,
                         },
                         ...(transformers.length > 0
                             ? {
@@ -151,18 +159,22 @@ async function fillQuote(quote) {
             new BigNumber(result.boughtAmount).gt(0);
         const txDataGasUsed = countNonzeroBytes(quote.data) * 16;
         const gasUsed = result.gasUsed + txDataGasUsed;
-        const boughtAmountUsd = fromTokenWeis(makerToken, result.boughtAmount)
-            .times(TOKENS[makerToken].value);
-        const soldAmountUsd = fromTokenWeis(takerToken, result.soldAmount)
-            .times(TOKENS[makerToken].value);
+        const boughtAmountUsd = fromTokenWeis(
+            makerToken,
+            result.boughtAmount
+        ).times(TOKENS[makerToken].value);
+        const soldAmountUsd = fromTokenWeis(
+            takerToken,
+            result.soldAmount
+        ).times(TOKENS[makerToken].value);
         const gasUsedUsd = fromTokenWeis(
-                'ETH',
-                new BigNumber(gasUsed).times(quote.gasPrice),
-            ).times(TOKENS['ETH'].value);
+            'ETH',
+            new BigNumber(gasUsed).times(quote.gasPrice)
+        ).times(TOKENS['ETH'].value);
         const protocolFeeUsd = fromTokenWeis(
-                'ETH',
-                new BigNumber(result.protocolFeePaid),
-            ).times(TOKENS['ETH'].value);
+            'ETH',
+            new BigNumber(result.protocolFeePaid)
+        ).times(TOKENS['ETH'].value);
         const costUsd = gasUsedUsd.plus(protocolFeeUsd);
         const adjustedBoughtAmountUsd = boughtAmountUsd.minus(costUsd);
         const adjustedSoldAmountUsd = soldAmountUsd.plus(costUsd);
@@ -208,7 +220,7 @@ async function getTransformersOverrides() {
             )
                 .new(...(override.constructorArgs || []))
                 .encode(),
-            address: toTransformerAddress(CONFIG.transformers.deployer, nonce),
+            address: toDeployedAddress(CONFIG.transformers.deployer, nonce),
             balance: override.balance,
         });
     }
@@ -224,10 +236,6 @@ async function getOverrides() {
             nonce: nonce,
         })
     );
-}
-
-function toTransformerAddress(deployer, nonce) {
-    return ethjs.bufferToHex(ethjs.rlphash([deployer, nonce]).slice(12));
 }
 
 function printFillSummary(quote, success, result) {
@@ -264,19 +272,22 @@ function printFillSummary(quote, success, result) {
             .div(10 ** TOKENS[makerToken].decimals)
             .toFixed(2);
         let gasUsed = new BigNumber(result.gasUsed);
-        let usdDisplay = side === 'sell'
-            ? `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${
-                result.costUsd.toFixed(2).red
-            })`
-            : `($${result.adjustedSoldAmountUsd.toFixed(2)}) ($${
-                result.costUsd.toFixed(2).red
-            })`
+        let usdDisplay =
+            side === 'sell'
+                ? `($${result.adjustedBoughtAmountUsd.toFixed(2)}) ($${
+                      result.costUsd.toFixed(2).red
+                  })`
+                : `($${result.adjustedSoldAmountUsd.toFixed(2)}) ($${
+                      result.costUsd.toFixed(2).red
+                  })`;
         console.info(
-            `${summary} @ ${quote.metadata.api.bold}\n\t${'✔ PASS'.green.bold} ${
-                soldAmount.yellow
-            } -> ${
+            `${summary} @ ${quote.metadata.api.bold}\n\t${
+                '✔ PASS'.green.bold
+            } ${soldAmount.yellow} -> ${
                 boughtAmount.yellow
-            } ${usdDisplay}\n\t${composition}\n\tgas: ${gasUsed.toString(10).red}`
+            } ${usdDisplay}\n\t${composition}\n\tgas: ${
+                gasUsed.toString(10).red
+            }`
         );
     } else {
         console.info(
@@ -331,6 +342,19 @@ function countNonzeroBytes(bytes) {
         }
     }
     return count;
+}
+
+async function createDeploymentsData() {
+    const data = [];
+    for (const c of CONFIG.deployments.contracts) {
+        data.push({
+            data: await createContractFromArtifactPath(c.artifactPath)
+                .new(...(c.constructorArgs || []))
+                .encode(),
+            value: c.value || 0,
+        });
+    }
+    return data;
 }
 
 module.exports = {

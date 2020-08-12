@@ -6,6 +6,7 @@ const fetch = require('node-fetch');
 const path = require('path');
 const _ = require('lodash');
 const moniker = require('moniker');
+const ethjs = require('ethereumjs-util');
 
 const TOKENS = require('./tokens');
 const CONFIG_PATH = path.resolve(__dirname, '../config.json');
@@ -17,6 +18,13 @@ const CONFIG_TEMPLATE = {
     taker: '0xd00d00caca000000000000000000000000001337',
     transformers: {
         deployer: '0x80a36559ab9a497fb658325ed771a584eb0f13da',
+        overridesByNonce: {},
+    },
+    overrides: {},
+    deployments: {
+        deployer: '0xdededededededededededededededededededede',
+        initialNonce: 0,
+        contracts: [],
     },
 };
 
@@ -151,44 +159,48 @@ async function updateTokenPrices() {
     console.info(`Updated ${Object.keys(resp).length} tokens.`);
 }
 
-async function updateTokenWallets() {
+async function updateTokenWallets(tokens) {
     console.info('Updating token wallets from bloxy...');
     await Promise.all(
-        Object.values(TOKENS).map(async (t) => {
-            try {
-                const resp = await (
-                    await fetch(
-                        `https://api.bloxy.info/token/token_holders_list?token=${t.address}&key=ACCAsmaX6X9rW&format=structure`
-                    )
-                ).json();
-                const walletResult = resp.find(
-                    (r) => r.address_type === 'Wallet'
-                );
-                t.wallet =
-                    walletResult && walletResult.address
-                        ? walletResult.address
-                        : t.wallet;
-            } catch (e) {
-                console.error(`Unable to update token wallet ${t.address}`);
-            }
-        })
+        Object.entries(TOKENS)
+            .filter(([k, t]) => t !== TOKENS['ETH'] && tokens.includes(k))
+            .map(async ([k, t]) => {
+                try {
+                    const resp = await (
+                        await fetch(
+                            `https://api.bloxy.info/token/token_holders_list?token=${t.address}&key=ACCAsmaX6X9rW&format=structure`
+                        )
+                    ).json();
+                    const walletResult = resp.find(
+                        (r) => r.address_type === 'Wallet'
+                    );
+                    t.wallet =
+                        walletResult && walletResult.address
+                            ? walletResult.address
+                            : t.wallet;
+                } catch (e) {
+                    console.error(
+                        `Unable to update token wallet for ${k}: ${e.message}`
+                    );
+                }
+            })
     );
 }
 
 function loadConfig() {
     let rawConfig;
     try {
-        rawConfig = fs.readFileSync(CONFIG_PATH);
+        rawConfig = fs.readFileSync(CONFIG_PATH, 'utf-8');
     } catch (err) {
-        console.info(`/config.json not found. Creating a new one.`);
-        return createConfigFile();
+        rawConfig = JSON.stringify(CONFIG_TEMPLATE);
     }
-    return _.defaultsDeep(JSON.parse(rawConfig), CONFIG_TEMPLATE);
-}
-
-function createConfigFile() {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG_TEMPLATE, null, '  '));
-    return CONFIG_TEMPLATE;
+    const config = _.defaultsDeep(JSON.parse(rawConfig), CONFIG_TEMPLATE);
+    const updatedRawConfig = JSON.stringify(config, null, '    ');
+    if (updatedRawConfig !== rawConfig) {
+        fs.writeFileSync(CONFIG_PATH, updatedRawConfig);
+        console.info(`Saved updated config file to ${CONFIG_PATH}`);
+    }
+    return config;
 }
 
 function parseURLSpec(raw) {
@@ -207,6 +219,10 @@ function randomMoniker() {
         .choose();
 }
 
+function toDeployedAddress(deployer, nonce) {
+    return ethjs.bufferToHex(ethjs.rlphash([deployer, nonce]).slice(12));
+}
+
 module.exports = {
     randomAddress,
     randomHash,
@@ -223,4 +239,5 @@ module.exports = {
     loadConfig,
     randomMoniker,
     updateTokenWallets,
+    toDeployedAddress,
 };
