@@ -1,4 +1,5 @@
 'use strict';
+const { RevertError } = require('@0x/utils');
 require('colors');
 const AbiEncoder = require('web3-eth-abi');
 const BigNumber = require('bignumber.js');
@@ -166,7 +167,7 @@ async function fillQuote(quote) {
         const soldAmountUsd = fromTokenWeis(
             takerToken,
             result.soldAmount
-        ).times(TOKENS[makerToken].value);
+        ).times(TOKENS[takerToken].value);
         const gasUsedUsd = fromTokenWeis(
             'ETH',
             new BigNumber(gasUsed).times(quote.gasPrice)
@@ -290,10 +291,14 @@ function printFillSummary(quote, success, result) {
             }`
         );
     } else {
+        let revertInfo = result.revertData;
+        try {
+            revertInfo = RevertError.decode(result.revertData);
+        } catch (e) {}
         console.info(
-            `${summary} @ ${quote.metadata.api.bold}\n\t${'✘ FAIL'.red.bold} (${
-                result.revertData
-            })\n\t${composition}`
+            `${summary} @ ${quote.metadata.api.bold}\n\t${
+                '✘ FAIL'.red.bold
+            } (${revertInfo})\n\t${composition}`
         );
     }
 }

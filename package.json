@@ -14,6 +14,7 @@
         "deployed-address": "node src/to-deployed-address.js"
     },
     "dependencies": {
+        "@0x/utils": "^5.5.1",
         "colors": "^1.4.0",
         "flex-contract": "^2.2.2",
         "flex-ether": "^1.7.1",
