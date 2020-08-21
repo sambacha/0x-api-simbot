@@ -60,7 +60,7 @@ const TOKENS = {
     WBTC: {
         decimals: 8,
         address: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
-        wallet: '0xc11b1268c1a384e55c48c2391d8d480264a3a7f4',
+        wallet: '0xbf72da2bd84c5170618fbe5914b0eca9638d5eb5',
         value: 9389,
         cgId: 'wrapped-bitcoin',
     },
@@ -92,6 +92,34 @@ const TOKENS = {
         value: 10,
         cgId: 'balancer',
     },
+    TUSD: {
+        decimals: 18,
+        address: '0x0000000000085d4780B73119b644AE5ecd22b376',
+        wallet: '0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3',
+        value: 1,
+        cgId: 'true-usd',
+    },
+    COMP: {
+        decimals: 18,
+        address: '0xc00e94cb662c3520282e6f5717214004a7f26888',
+        wallet: '0x2775b1c75658be0f640272ccb8c72ac986009e38',
+        value: 183,
+        cgId: 'compound-governance-token',
+    },
+    LEND: {
+        decimals: 18,
+        address: '0x80fB784B7eD66730e8b1DBd9820aFD29931aab03',
+        wallet: '0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3',
+        value: 0.61,
+        cgId: 'ethlend',
+    },
+    SNX: {
+        decimals: 18,
+        address: '0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f',
+        wallet: '0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be',
+        value: 6.42,
+        cgId: 'havven',
+    }
 };
 
 module.exports = TOKENS;
