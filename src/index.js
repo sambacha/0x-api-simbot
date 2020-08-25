@@ -63,7 +63,7 @@ const ARGV = yargs
     if (ARGV.token.length < 2) {
         throw new Error(`At least 2 tokens must be given.`);
     }
-    await updateTokenWallets(ARGV.token);
+    // await updateTokenWallets(ARGV.token);
     // Keep token prices up to date for long running tests
     forever(() => updateTokenPrices(), 300000);
     const logs = new LogWriter(ARGV.output);

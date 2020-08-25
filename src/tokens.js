@@ -18,7 +18,7 @@ const TOKENS = {
     DAI: {
         decimals: 18,
         address: '0x6b175474e89094c44da98b954eedeac495271d0f',
-        wallet: '0x07bb41df8c1d275c4259cdd0dbf0189d6a9a5f32',
+        wallet: '0xc2d55ce14a8e04aef9b6bcfd105079b63c6a0ac8',
         value: 1,
         cgId: 'dai',
     },

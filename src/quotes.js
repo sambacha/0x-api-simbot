@@ -50,21 +50,68 @@ const transformerDeployer = createContractFromArtifact(
 // they fill so they fill against the same state.
 const FILL_BLOCK_NUMBER_BY_QUOTE_ID_CACHE = {};
 
+const STEP_DIRECTIONS = [0, 0.25, 0.5, 0.75].map((x) => x * 2 * Math.PI);
+let stepSize = 0.1;
+const STEP_SIZE_DECAY = 0.999;
+let sampleDistributionParams = { alpha: 1, beta: 1 };
+const MIN_PARAM_VALUE = 0.001;
+function stepParams(params, stepSize, direction) {
+    return {
+        alpha: Math.max(
+            MIN_PARAM_VALUE,
+            params.alpha + stepSize * Math.cos(direction)
+        ),
+        beta: Math.max(
+            MIN_PARAM_VALUE,
+            params.beta + stepSize * Math.sin(direction)
+        ),
+    };
+}
+
 async function fillSellQuote(opts) {
-    let quote;
-    if (opts.apiPath.includes('1inch')) {
-        quote = await oneInch.getSellQuote(opts);
-    } else {
-        quote = await zeroEx.getSellQuote(opts);
+    const steppedParams = [sampleDistributionParams].concat(
+        STEP_DIRECTIONS.map((direction) =>
+            stepParams(
+                sampleDistributionParams,
+                stepSize,
+                direction
+            )
+        )
+    );
+    stepSize *= STEP_SIZE_DECAY;
+    const blockNumber = await eth.getBlockNumber();
+    const quotes = await Promise.all(
+        steppedParams.map(async (params) =>
+            zeroEx.getSellQuote({
+                ...opts,
+                blockNumber,
+                sampleDistributionParams: params,
+            })
+        )
+    );
+
+    const bestQuote = quotes.reduce(
+        (prev, quote, i) => {
+            const buyAmount = new BigNumber(
+                _.get(quote, 'buyAmount', new BigNumber(0))
+            );
+            console.log(JSON.stringify(quote.sources), buyAmount.toString());
+            return buyAmount.isGreaterThan(prev.buyAmount) &&
+                JSON.stringify(quote.sources) !== JSON.stringify(prev.sources)
+                ? {
+                      index: i,
+                      buyAmount,
+                      sources: quote.sources,
+                  }
+                : prev;
+        },
+        { index: -1, buyAmount: 0, sources: [] }
+    );
+    if (bestQuote.index !== -1) {
+        sampleDistributionParams = { ...steppedParams[bestQuote.index] };
     }
-    if (quote && quote.data) {
-        return delay(
-            async () => fillQuote(quote),
-            quote.metadata.fillDelay * 1000
-        );
-    } else {
-        await delay(() => {}, 10000);
-    }
+    console.log(sampleDistributionParams);
+    return delay(async () => sampleDistributionParams, 2000);
 }
 
 async function fillBuyQuote(opts) {
