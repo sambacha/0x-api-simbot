@@ -1,0 +1,34 @@
+{
+	"abi": [
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "to",
+					"type": "address"
+				},
+				{
+					"internalType": "address",
+					"name": "haveToken",
+					"type": "address"
+				},
+				{
+					"internalType": "address",
+					"name": "wantToken",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "haveAmount",
+					"type": "uint256"
+				}
+			],
+			"name": "uniswap",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	],
+	"bytecode": "",
+	"deployedBytecode": ""
+}

@@ -14,7 +14,7 @@ const {
     updateTokenWallets,
 } = require('./utils');
 const TOKENS = require('./tokens');
-const { fillBuyQuote, fillSellQuote } = require('./quotes');
+const { benchmarkUniswap, fillBuyQuote, fillSellQuote } = require('./quotes');
 const { DELAY_STOPS, FILL_STOPS, LIVE_API_PATH } = require('./constants');
 
 const ARGV = yargs
@@ -60,23 +60,7 @@ const ARGV = yargs
     }).argv;
 
 (async () => {
-    if (ARGV.token.length < 2) {
-        throw new Error(`At least 2 tokens must be given.`);
-    }
-    // await updateTokenWallets(ARGV.token);
-    // Keep token prices up to date for long running tests
-    forever(() => updateTokenPrices(), 300000);
-    const logs = new LogWriter(ARGV.output);
-    if (ARGV.sells || !ARGV.buys) {
-        _.times(ARGV.jobs, (i) =>
-            forever(() => _fillSellQuote(logs, 1000, i * 1000))
-        );
-    }
-    if (ARGV.buys || !ARGV.sells) {
-        _.times(ARGV.jobs, (i) =>
-            forever(() => _fillBuyQuote(logs), 1000, i * 1000)
-        );
-    }
+    await benchmarkUniswap();
 })();
 
 async function _fillSellQuote(logs) {

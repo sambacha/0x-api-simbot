@@ -1,0 +1,19 @@
+{
+	"abi": [
+		{
+			"inputs": [
+				{
+					"internalType": "uint112",
+					"name": "sellAmount",
+					"type": "uint112"
+				}
+			],
+			"name": "uniswapDaiWeth",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	],
+	"bytecode": "",
+	"deployedBytecode": ""
+}

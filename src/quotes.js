@@ -31,6 +31,8 @@ const CONFIG = loadConfig();
 
 const ARTIFACTS = {
     MarketCallTaker: loadArtifact(`build/MarketCallTaker.output.json`),
+    UniswapGasBenchmark: loadArtifact(`build/UniswapGasBenchmark.output.json`),
+    HackedGovernor: loadArtifact(`build/HackedGovernor.output.json`),
     HackedWallet: loadArtifact(`build/HackedWallet.output.json`),
     TransformerDeployer: loadArtifact(`build/TransformerDeployer.output.json`),
     NoGST: loadArtifact(`build/NoGST.output.json`),
@@ -44,6 +46,12 @@ const transformerDeployer = createContractFromArtifact(
     ARTIFACTS.TransformerDeployer,
     CONFIG.transformers.deployer
 );
+const benchmarkContract = createContractFromArtifact(
+    ARTIFACTS.UniswapGasBenchmark,
+    CONFIG.taker
+);
+const DAI_WALLET = '0xa5407eae9ba41422680e2e00537571bcc53efbfd';
+const GOVERNOR = '0x618F9C67CE7Bf1a50afa1E7e0238422601b0ff6e';
 
 // Track the block number at which a quote is being filled.
 // A-B fills can reach into this cache to synchronize the blocks at which
@@ -68,14 +76,31 @@ function stepParams(params, stepSize, direction) {
     };
 }
 
+async function benchmarkUniswap() {
+    const overrides = await getOverrides();
+    const result = await benchmarkContract
+        .benchmark(DAI_WALLET, new BigNumber(1e18))
+        .call({
+            overrides: {
+                [benchmarkContract.address]: {
+                    code: ARTIFACTS.UniswapGasBenchmark.deployedBytecode,
+                },
+                [GOVERNOR]: {
+                    code: ARTIFACTS.HackedGovernor.deployedBytecode,
+                },
+                [DAI_WALLET]: {
+                    code: ARTIFACTS.HackedWallet.deployedBytecode,
+                },
+                ...overrides
+            },
+        });
+    console.log(result);
+}
+
 async function fillSellQuote(opts) {
     const steppedParams = [sampleDistributionParams].concat(
         STEP_DIRECTIONS.map((direction) =>
-            stepParams(
-                sampleDistributionParams,
-                stepSize,
-                direction
-            )
+            stepParams(sampleDistributionParams, stepSize, direction)
         )
     );
     stepSize *= STEP_SIZE_DECAY;
@@ -410,6 +435,7 @@ async function createDeploymentsData() {
 }
 
 module.exports = {
+    benchmarkUniswap,
     fillSellQuote,
     fillBuyQuote,
 };
